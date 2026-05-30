@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "290112950821",
+    "project_id": "vibewrite-2eaa0",
+    "storage_bucket": "vibewrite-2eaa0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:290112950821:android:ea47bb29087d21dfaa25cc",
+        "android_client_info": {
+          "package_name": "com.vw.vibewrite"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAwNl853TtOI9o1nw_FaKCHO895vG8k-JI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
