@@ -20,11 +20,9 @@ class PostScreen extends StatefulWidget {
 }
 
 class _PostScreenState extends State<PostScreen> {
-  // ── view state ──────────────────────────────────────────────────────────────
   _ViewMode _viewMode = _ViewMode.list;
   String _currentChapterTitle = '';
 
-  // ── editor controllers ──────────────────────────────────────────────────────
   final TextEditingController _titleController = TextEditingController();
   late QuillController _bodyController;
   final FocusNode _bodyFocusNode = FocusNode();
@@ -41,18 +39,15 @@ class _PostScreenState extends State<PostScreen> {
   String? _savedStoryId;
   String _authorName = '';
 
-
   final List<String> _storyTypes = ['Short Story', 'Flash Fiction', 'Novel', 'Poetry'];
   final List<String> _contentTypes = ['Prologue', 'Chapter', 'Epilogue'];
   final List<String> _genres = ['Romance', 'Mystery', 'Fantasy', 'Sci-Fi', 'Drama', 'Horror', 'Thriller'];
-  
+
   @override
   void initState() {
     super.initState();
-
     _bodyController = QuillController.basic();
     _listenToEditor();
-
     _loadAuthorName();
   }
 
@@ -66,7 +61,6 @@ class _PostScreenState extends State<PostScreen> {
     super.dispose();
   }
 
-  // ── data helpers ─────────────────────────────────────────────────────────────
   Future<void> _loadAuthorName() async {
     try {
       final currentUser = FirebaseAuth.instance.currentUser;
@@ -88,11 +82,8 @@ class _PostScreenState extends State<PostScreen> {
     _titleController.clear();
     _chapterTitleController.clear();
     _currentChapterTitle = '';
-
     _bodyController.document = Document()..insert(0, '\n');
-
     _chapterController.text = '1';
-
     setState(() {
       _selectedGenre = 'Romance';
       _storyType = 'Short Story';
@@ -102,62 +93,85 @@ class _PostScreenState extends State<PostScreen> {
       _viewMode = _ViewMode.editor;
     });
   }
-  
+
   Future<void> _loadStory(String storyId, Map<String, dynamic> data) async {
-    setState(() {
+    try {
       final bodyData = data['body'] ?? '';
+      Document document = Document()..insert(0, '\n');
 
       if (bodyData is String && bodyData.isNotEmpty) {
-        _bodyController.document =
-            Document.fromJson(jsonDecode(bodyData));
-      } else {
-        _bodyController.document = Document()..insert(0, '\n');
+        try {
+          final decoded = jsonDecode(bodyData);
+          document = Document.fromJson(decoded);
+        } catch (e) {
+          debugPrint('Error parsing body JSON string: $e');
+          document = Document()..insert(0, '$bodyData\n');
+        }
+      } else if (bodyData is Map || bodyData is List) {
+        try {
+          document = Document.fromJson(bodyData);
+        } catch (e) {
+          debugPrint('Error parsing body Map/List: $e');
+          document = Document()..insert(0, '\n');
+        }
       }
-      _titleController.text = data['title'] ?? '';
-      _selectedGenre = data['genre'] ?? 'Romance';
-      _storyType = data['storyType'] ?? 'Short Story';
-      
-      _contentType = data['contentType'] ?? 'Chapter';
-      _chapterController.text = (data['chapter'] ?? 1).toString();
-      _savedStoryId = storyId;
-      _isSaved = true;
-      _viewMode = _ViewMode.editor;
-    });
 
-    // Load latest chapter for Novels
-    if (_storyType == 'Novel') {
-      final chaptersSnapshot = await FirebaseFirestore.instance
-          .collection('stories')
-          .doc(storyId)
-          .collection('chapters')
-          .orderBy('chapterNumber', descending: true)
-          .limit(1)
-          .get();
-
-      if (chaptersSnapshot.docs.isNotEmpty) {
-        final chapterData = chaptersSnapshot.docs.first.data();
-
+      if (mounted) {
         setState(() {
-          _chapterController.text =
-              (chapterData['chapterNumber'] ?? 1).toString();
-
-          _chapterTitleController.text =
-              chapterData['title'] ?? '';
-
-          _currentChapterTitle =
-              chapterData['title'] ?? '';
-          
-          _contentType =
-          chapterData['contentType'] ?? 'Chapter';
-
-
-          final bodyData = chapterData['body'] ?? '';
-          if (bodyData is String && bodyData.isNotEmpty) {
-            _bodyController.document = Document.fromJson(jsonDecode(bodyData));
-          } else {
-           _bodyController.document = Document()..insert(0, '\n');
-          }
+          _bodyController.document = document;
+          _titleController.text = data['title'] ?? '';
+          _selectedGenre = data['genre'] ?? 'Romance';
+          _storyType = data['storyType'] ?? 'Short Story';
+          _contentType = data['contentType'] ?? 'Chapter';
+          _chapterController.text = (data['chapter'] ?? 1).toString();
+          _savedStoryId = storyId;
+          _isSaved = true;
+          _viewMode = _ViewMode.editor;
         });
+      }
+
+      if (_storyType == 'Novel') {
+        try {
+          final chaptersSnapshot = await FirebaseFirestore.instance
+              .collection('stories')
+              .doc(storyId)
+              .collection('chapters')
+              .orderBy('chapterNumber', descending: true)
+              .limit(1)
+              .get();
+
+          if (chaptersSnapshot.docs.isNotEmpty && mounted) {
+            final chapterData = chaptersSnapshot.docs.first.data();
+            final chapterBodyData = chapterData['body'] ?? '';
+            Document chapterDocument = Document()..insert(0, '\n');
+
+            if (chapterBodyData is String && chapterBodyData.isNotEmpty) {
+              try {
+                final decoded = jsonDecode(chapterBodyData);
+                chapterDocument = Document.fromJson(decoded);
+              } catch (e) {
+                debugPrint('Error parsing body JSON string: $e');
+                document = Document()
+                  ..insert(0, bodyData);
+              }
+            }
+
+            setState(() {
+              _chapterController.text = (chapterData['chapterNumber'] ?? 1).toString();
+              _chapterTitleController.text = chapterData['title'] ?? '';
+              _currentChapterTitle = chapterData['title'] ?? '';
+              _contentType = chapterData['contentType'] ?? 'Chapter';
+              _bodyController.document = chapterDocument;
+            });
+          }
+        } catch (e) {
+          debugPrint('Error loading chapters: $e');
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading story: $e');
+      if (mounted) {
+        _showSnack('Error loading story. Please try again.', color: AppTheme.inkTerracotta);
       }
     }
   }
@@ -168,14 +182,10 @@ class _PostScreenState extends State<PostScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppTheme.inkBgMain,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          'Delete story?',
-          style: TextStyle(color: AppTheme.inkEspresso, fontWeight: FontWeight.bold),
-        ),
-        content: const Text(
-          'This cannot be undone.',
-          style: TextStyle(fontSize: 14, color: AppTheme.inkUmber),
-        ),
+        title: const Text('Delete story?',
+            style: TextStyle(color: AppTheme.inkEspresso, fontWeight: FontWeight.bold)),
+        content: const Text('This cannot be undone.',
+            style: TextStyle(fontSize: 14, color: AppTheme.inkUmber)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -195,18 +205,12 @@ class _PostScreenState extends State<PostScreen> {
     );
     if (confirm == true) {
       try {
-        final storyRef = FirebaseFirestore.instance
-          .collection('stories')
-          .doc(storyId);
-
-      // Delete all chapters first
-      final chapters = await storyRef.collection('chapters').get();
-
-      for (final doc in chapters.docs) {
-        await doc.reference.delete();
-      }
-      // Delete story document
-      await storyRef.delete();
+        final storyRef = FirebaseFirestore.instance.collection('stories').doc(storyId);
+        final chapters = await storyRef.collection('chapters').get();
+        for (final doc in chapters.docs) {
+          await doc.reference.delete();
+        }
+        await storyRef.delete();
         if (mounted) _showSnack('Story deleted', color: AppTheme.inkTerracotta);
       } catch (e) {
         if (mounted) _showSnack('Error deleting: $e', color: AppTheme.inkTerracotta);
@@ -216,9 +220,7 @@ class _PostScreenState extends State<PostScreen> {
 
   Future<void> _handleSave() async {
     final title = _titleController.text.trim();
-    final body = jsonEncode(
-      _bodyController.document.toDelta().toJson(),
-    );
+    final body = jsonEncode(_bodyController.document.toDelta().toJson());
 
     if (title.isEmpty) {
       _showSnack('Please add a title before saving.', color: AppTheme.inkUmber);
@@ -235,7 +237,6 @@ class _PostScreenState extends State<PostScreen> {
 
     try {
       final storiesRef = FirebaseFirestore.instance.collection('stories');
-
       final data = {
         'title': title,
         'genre': _selectedGenre,
@@ -257,10 +258,7 @@ class _PostScreenState extends State<PostScreen> {
         });
         _savedStoryId = docRef.id;
       } else {
-        await storiesRef.doc(_savedStoryId).update({
-          ...data,
-          'body': body,
-        });
+        await storiesRef.doc(_savedStoryId).update({...data, 'body': body});
       }
 
       if (_storyType == 'Novel' && _savedStoryId != null) {
@@ -298,20 +296,28 @@ class _PostScreenState extends State<PostScreen> {
     }
   }
 
-  void _handleChapterSelected(
-      int chapterNumber,
-      Map<String, dynamic> data,
-  ) {
-    setState(() {
-      final bodyData = data['body'] ?? '';
+  void _handleChapterSelected(int chapterNumber, Map<String, dynamic> data) {
+    final bodyData = data['body'] ?? '';
+    Document document = Document()..insert(0, '\n');
 
-      if (bodyData is String && bodyData.isNotEmpty) {
-        _bodyController.document =
-            Document.fromJson(jsonDecode(bodyData));
-      } else {
-        _bodyController.document = Document()..insert(0, '\n');
+    if (bodyData is String && bodyData.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(bodyData);
+        document = Document.fromJson(decoded);
+      } catch (e) {
+        debugPrint('Error parsing chapter JSON: $e');
+        document = Document()..insert(0, '$bodyData\n');
       }
+    } else if (bodyData is Map || bodyData is List) {
+      try {
+        document = Document.fromJson(bodyData);
+      } catch (e) {
+        debugPrint('Error parsing chapter body Map/List: $e');
+      }
+    }
 
+    setState(() {
+      _bodyController.document = document;
       _chapterController.text = chapterNumber.toString();
       _chapterTitleController.text = data['title'] ?? '';
       _contentType = data['contentType'] ?? 'Chapter';
@@ -319,13 +325,10 @@ class _PostScreenState extends State<PostScreen> {
       _isSaved = true;
     });
   }
-    void _listenToEditor() {
+
+  void _listenToEditor() {
     _bodyController.document.changes.listen((event) {
-      if (mounted) {
-        setState(() {
-          _isSaved = false;
-        });
-      }
+      if (mounted) setState(() => _isSaved = false);
     });
   }
 
@@ -370,9 +373,7 @@ class _PostScreenState extends State<PostScreen> {
   }
 
   int get _wordCount =>
-    PostScreenUtils.getWordCount(
-      _bodyController.document.toPlainText(),
-    );
+      PostScreenUtils.getWordCount(_bodyController.document.toPlainText());
 
   Future<void> _confirmDiscard() async {
     final hasUnsaved =
@@ -389,14 +390,10 @@ class _PostScreenState extends State<PostScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppTheme.inkBgMain,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text(
-          'Unsaved changes',
-          style: TextStyle(color: AppTheme.inkEspresso, fontWeight: FontWeight.bold),
-        ),
-        content: const Text(
-          'Would you like to save before leaving?',
-          style: TextStyle(fontSize: 14, color: AppTheme.inkUmber),
-        ),
+        title: const Text('Unsaved changes',
+            style: TextStyle(color: AppTheme.inkEspresso, fontWeight: FontWeight.bold)),
+        content: const Text('Would you like to save before leaving?',
+            style: TextStyle(fontSize: 14, color: AppTheme.inkUmber)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop('discard'),
@@ -438,7 +435,7 @@ class _PostScreenState extends State<PostScreen> {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // LIST VIEW
+  // LIST VIEW (with bottom nav bar)
   // ═══════════════════════════════════════════════════════════════════════════
   Widget _buildListView() {
     final currentUser = FirebaseAuth.instance.currentUser;
@@ -448,18 +445,9 @@ class _PostScreenState extends State<PostScreen> {
       appBar: AppBar(
         backgroundColor: AppTheme.inkBgMain,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: AppTheme.inkEspresso),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: const Text(
-          'My Stories',
-          style: TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.inkEspresso,
-          ),
-        ),
+        leading: const SizedBox(),
+        title: const Text('My Stories',
+            style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppTheme.inkEspresso)),
         centerTitle: true,
       ),
       body: currentUser == null
@@ -480,8 +468,7 @@ class _PostScreenState extends State<PostScreen> {
                             child: Text(
                               'Error loading stories:\n${snapshot.error}',
                               textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                  fontSize: 13, color: AppTheme.inkTerracotta),
+                              style: const TextStyle(fontSize: 13, color: AppTheme.inkTerracotta),
                             ),
                           ),
                         );
@@ -501,25 +488,18 @@ class _PostScreenState extends State<PostScreen> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(Icons.edit_note,
-                                  size: 56,
-                                  color: AppTheme.inkUmber.withValues(alpha: 0.25)),
+                                  size: 56, color: AppTheme.inkUmber.withValues(alpha: 0.25)),
                               const SizedBox(height: 14),
-                              Text(
-                                'No stories yet',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppTheme.inkUmber.withValues(alpha: 0.5),
-                                ),
-                              ),
+                              Text('No stories yet',
+                                  style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppTheme.inkUmber.withValues(alpha: 0.5))),
                               const SizedBox(height: 6),
-                              Text(
-                                'Tap "New Story" below to start writing.',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: AppTheme.inkUmber.withValues(alpha: 0.4),
-                                ),
-                              ),
+                              Text('Tap "New Story" below to start writing.',
+                                  style: TextStyle(
+                                      fontSize: 13,
+                                      color: AppTheme.inkUmber.withValues(alpha: 0.4))),
                             ],
                           ),
                         );
@@ -527,10 +507,8 @@ class _PostScreenState extends State<PostScreen> {
 
                       final sorted = List.of(docs);
                       sorted.sort((a, b) {
-                        final aTs = (a.data() as Map<String, dynamic>)['updatedAt']
-                            as Timestamp?;
-                        final bTs = (b.data() as Map<String, dynamic>)['updatedAt']
-                            as Timestamp?;
+                        final aTs = (a.data() as Map<String, dynamic>)['updatedAt'] as Timestamp?;
+                        final bTs = (b.data() as Map<String, dynamic>)['updatedAt'] as Timestamp?;
                         if (aTs == null && bTs == null) return 0;
                         if (aTs == null) return 1;
                         if (bTs == null) return -1;
@@ -547,9 +525,7 @@ class _PostScreenState extends State<PostScreen> {
                             docId: doc.id,
                             data: data,
                             authorName: _authorName,
-                            onEdit: () async {
-                            await _loadStory(doc.id, data);
-                          },
+                            onEdit: () async => await _loadStory(doc.id, data),
                             onDelete: () => _deleteStory(doc.id),
                           );
                         },
@@ -557,33 +533,26 @@ class _PostScreenState extends State<PostScreen> {
                     },
                   ),
                 ),
-
-                // ── New Story button ────────────────────────────────────────
                 Container(
                   padding: EdgeInsets.fromLTRB(
                       16, 12, 16, MediaQuery.of(context).padding.bottom + 12),
                   decoration: BoxDecoration(
                     color: AppTheme.inkCanvas,
                     border: Border(
-                      top: BorderSide(
-                          color: AppTheme.inkUmber.withValues(alpha: 0.12)),
-                    ),
+                        top: BorderSide(color: AppTheme.inkUmber.withValues(alpha: 0.12))),
                   ),
                   child: SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
                       onPressed: _openNewStory,
                       icon: const Icon(Icons.add, size: 20),
-                      label: const Text(
-                        'New Story',
-                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                      ),
+                      label: const Text('New Story',
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.inkTerracotta,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         elevation: 0,
                       ),
                     ),
@@ -591,11 +560,12 @@ class _PostScreenState extends State<PostScreen> {
                 ),
               ],
             ),
+      // ✅ Navigation bar is handled by MainNavigationScreen
     );
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // EDITOR VIEW
+  // EDITOR VIEW (no bottom nav bar - user is focused on writing)
   // ═══════════════════════════════════════════════════════════════════════════
   Widget _buildEditorView() {
     return Scaffold(
@@ -604,16 +574,13 @@ class _PostScreenState extends State<PostScreen> {
         backgroundColor: AppTheme.inkBgMain,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new,
-              size: 18, color: AppTheme.inkEspresso),
+          icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: AppTheme.inkEspresso),
           onPressed: _confirmDiscard,
         ),
         title: Text(
           _savedStoryId == null ? 'New Story' : 'Edit Story',
           style: const TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.inkEspresso),
+              fontSize: 17, fontWeight: FontWeight.bold, color: AppTheme.inkEspresso),
         ),
         centerTitle: true,
         actions: [
@@ -623,33 +590,42 @@ class _PostScreenState extends State<PostScreen> {
               child: GestureDetector(
                 onTap: _openChaptersModal,
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
                     color: AppTheme.inkIndigo.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                        color: AppTheme.inkIndigo.withValues(alpha: 0.25)),
+                    border: Border.all(color: AppTheme.inkIndigo.withValues(alpha: 0.25)),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.menu_book_outlined,
-                          size: 16, color: AppTheme.inkIndigo),
+                      Icon(Icons.menu_book_outlined, size: 16, color: AppTheme.inkIndigo),
                       const SizedBox(width: 4),
-                      const Text(
-                        'Chapters',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.inkIndigo,
-                        ),
-                      ),
+                      const Text('Chapters',
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.inkIndigo)),
                     ],
                   ),
                 ),
               ),
             ),
+          Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: GestureDetector(
+              onTap: _openStorySetupModal,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppTheme.inkUmber.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppTheme.inkUmber.withValues(alpha: 0.12)),
+                ),
+                child: const Icon(Icons.tune, size: 16, color: AppTheme.inkUmber),
+              ),
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 12.0),
             child: TextButton(
@@ -657,26 +633,19 @@ class _PostScreenState extends State<PostScreen> {
               style: TextButton.styleFrom(
                 backgroundColor: AppTheme.inkTerracotta,
                 foregroundColor: Colors.white,
-                disabledBackgroundColor:
-                    AppTheme.inkTerracotta.withValues(alpha: 0.5),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20)),
+                disabledBackgroundColor: AppTheme.inkTerracotta.withValues(alpha: 0.5),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               ),
               child: _isSaving
                   ? const SizedBox(
                       width: 14,
                       height: 14,
                       child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor:
-                            AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white)))
                   : const Text('Save',
-                      style: TextStyle(
-                          fontSize: 13, fontWeight: FontWeight.w600)),
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
             ),
           ),
         ],
@@ -684,47 +653,52 @@ class _PostScreenState extends State<PostScreen> {
       body: Column(
         children: [
           Expanded(
-            child: GestureDetector(
-              onTap: () => _bodyFocusNode.requestFocus(),
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                child: _buildEditorContent(),
-              ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: _buildEditorContent(),
             ),
           ),
 
-          // ── Toolbar ─────────────────────────────────────────────────────
           Container(
-            padding: EdgeInsets.fromLTRB(
-                20, 10, 20, MediaQuery.of(context).padding.bottom + 10),
             decoration: BoxDecoration(
               color: AppTheme.inkCanvas,
               border: Border(
-                top: BorderSide(
-                    color: AppTheme.inkUmber.withValues(alpha: 0.12)),
-              ),
+                  top: BorderSide(color: AppTheme.inkUmber.withValues(alpha: 0.12))),
             ),
-            child: Row(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  '$_wordCount ${_wordCount == 1 ? 'word' : 'words'}',
-                  style: TextStyle(
-                      fontSize: 12,
-                      color: AppTheme.inkUmber.withValues(alpha: 0.7)),
-                ),
-                const Spacer(),
-                const SizedBox(width: 4),
-                GestureDetector(
-                  onTap: _openStorySetupModal,
-                  child: Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: AppTheme.inkUmber.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(8),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  child: QuillSimpleToolbar(
+                    configurations: QuillSimpleToolbarConfigurations(
+                      controller: _bodyController,
+                      toolbarIconAlignment: WrapAlignment.start,
+                      showBoldButton: true,
+                      showItalicButton: true,
+                      showUnderLineButton: true,
+                      showStrikeThrough: false,
+                      showInlineCode: true,
+                      showColorButton: true,
+                      showBackgroundColorButton: true,
+                      showClearFormat: true,
+                      showHeaderStyle: true,
+                      showListNumbers: true,
+                      showListBullets: true,
+                      showListCheck: true,
+                      showCodeBlock: true,
+                      showQuote: false,
+                      showIndent: false,
+                      showLink: false,
+                      showSearchButton: false,
+                      showUndo: true,
+                      showRedo: false,
+                      showFontFamily: false,
+                      showFontSize: false,
+                      showAlignmentButtons: false,
+                      showDividers: false,
                     ),
-                    child: const Icon(Icons.tune,
-                        size: 18, color: AppTheme.inkUmber),
                   ),
                 ),
               ],
@@ -771,88 +745,105 @@ class _PostScreenState extends State<PostScreen> {
   }
 
   Widget _buildMetadataBar() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 14),
-      child: Row(
-        children: [
-          Container(
-            width: 32,
-            height: 3,
-            decoration: BoxDecoration(
-              color: AppTheme.inkTerracotta.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(2),
-            ),
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 14),
+    child: Row(
+      children: [
+        Container(
+          width: 32,
+          height: 3,
+          decoration: BoxDecoration(
+            color: AppTheme.inkTerracotta.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(2),
           ),
-          const SizedBox(width: 8),
+        ),
+        const SizedBox(width: 8),
+
+        Text(
+          _selectedGenre,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: PostScreenUtils.getGenreTagColor(_selectedGenre),
+            letterSpacing: 0.5,
+          ),
+        ),
+
+        const SizedBox(width: 6),
+        Text(
+          '·',
+          style: TextStyle(
+            fontSize: 11,
+            color: AppTheme.inkUmber.withValues(alpha: 0.5),
+          ),
+        ),
+
+        const SizedBox(width: 6),
+
+        Text(
+          _storyType,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: PostScreenUtils.getStoryTypeTagColor(_storyType),
+            letterSpacing: 0.5,
+          ),
+        ),
+
+        if (_authorName.isNotEmpty) ...[
+          const SizedBox(width: 10),
           Text(
-            _selectedGenre,
+            '@$_authorName',
             style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: PostScreenUtils.getGenreTagColor(_selectedGenre),
-                letterSpacing: 0.5),
-          ),
-          const SizedBox(width: 6),
-          Text('·',
-              style: TextStyle(
-                  fontSize: 11,
-                  color: AppTheme.inkUmber.withValues(alpha: 0.5))),
-          const SizedBox(width: 6),
-          Text(
-            _storyType,
-            style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: PostScreenUtils.getStoryTypeTagColor(_storyType),
-                letterSpacing: 0.5),
-          ),
-          if (_authorName.isNotEmpty) ...[
-            const SizedBox(width: 10),
-            Text(
-              '· @$_authorName',
-              style: TextStyle(
-                  fontSize: 11,
-                  color: AppTheme.inkUmber.withValues(alpha: 0.6)),
+              fontSize: 11,
+              color: AppTheme.inkUmber.withValues(alpha: 0.6),
             ),
-          ],
-          if (_isSaved) ...[
-            const SizedBox(width: 12),
-            Icon(Icons.cloud_done_outlined,
-                size: 13, color: AppTheme.inkSage.withValues(alpha: 0.8)),
-            const SizedBox(width: 3),
-            Text(
-              'Saved',
-              style: TextStyle(
-                  fontSize: 11,
-                  color: AppTheme.inkSage.withValues(alpha: 0.8)),
-            ),
-          ],
+          ),
         ],
-      ),
-    );
-  }
+
+        // pushes everything after this to the right
+        const Spacer(),
+
+        Text(
+          '$_wordCount words',
+          style: TextStyle(
+            fontSize: 11,
+            color: AppTheme.inkUmber.withValues(alpha: 0.6),
+          ),
+        ),
+
+        if (_isSaved) ...[
+          const SizedBox(width: 10),
+          Icon(
+            Icons.cloud_done_outlined,
+            size: 13,
+            color: AppTheme.inkSage.withValues(alpha: 0.8),
+          ),
+        ],
+      ],
+    ),
+  );
+}
 
   void _openStorySetupModal() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) {
-        return StorySetupModal(
-          selectedGenre: _selectedGenre,
-          storyType: _storyType,
-          contentType: _contentType,
-          storyTypes: _storyTypes,
-          genres: _genres,
-          contentTypes: _contentTypes,
-          onGenreChanged: (value) => setState(() => _selectedGenre = value),
-          onStoryTypeChanged: (value) => setState(() => _storyType = value),
-          onContentTypeChanged: (value) => setState(() => _contentType = value),
-          genreColor: PostScreenUtils.getGenreTagColor,
-          storyTypeColor: PostScreenUtils.getStoryTypeTagColor,
-          contentTypeColor: PostScreenUtils.getContentTypeColor,
-        );
-      },
+      builder: (_) => StorySetupModal(
+        selectedGenre: _selectedGenre,
+        storyType: _storyType,
+        contentType: _contentType,
+        storyTypes: _storyTypes,
+        genres: _genres,
+        contentTypes: _contentTypes,
+        onGenreChanged: (value) => setState(() => _selectedGenre = value),
+        onStoryTypeChanged: (value) => setState(() => _storyType = value),
+        onContentTypeChanged: (value) => setState(() => _contentType = value),
+        genreColor: PostScreenUtils.getGenreTagColor,
+        storyTypeColor: PostScreenUtils.getStoryTypeTagColor,
+        contentTypeColor: PostScreenUtils.getContentTypeColor,
+      ),
     );
   }
 }

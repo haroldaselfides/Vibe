@@ -7,6 +7,7 @@ import 'package:vibewrite_app/pages/signup.dart';
 import 'package:vibewrite_app/pages/welcome.dart';
 import 'package:vibewrite_app/services/firebase_options.dart';
 import 'theme/app_theme.dart';
+import 'widgets/navigation.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,7 +31,7 @@ class MyApp extends StatelessWidget {
         '/welcome': (context) => const WelcomeScreen(),
         '/login': (context) => const LoginScreen(),
         '/signup': (context) => const SignUpScreen(),
-        '/home': (context) => const HomeScreen(),
+        '/home': (context) => const MainNavigationScreen(),
       },
     );
   }

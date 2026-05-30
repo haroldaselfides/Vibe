@@ -1,7 +1,75 @@
+
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 
+// ─────────────────────────────────────────────
+//  Shared floating-card input field
+// ─────────────────────────────────────────────
+class _CardTextField extends StatelessWidget {
+  final TextEditingController controller;
+  final String hintText;
+  final TextStyle style;
+  final TextStyle hintStyle;
+  final int? maxLines;
+  final TextInputAction? textInputAction;
+  final VoidCallback? onChanged;
+  final VoidCallback? onSubmitted;
+  final TextAlign textAlign;
+
+  const _CardTextField({
+    required this.controller,
+    required this.hintText,
+    required this.style,
+    required this.hintStyle,
+    this.maxLines = 1,
+    this.textInputAction,
+    this.onChanged,
+    this.onSubmitted,
+    this.textAlign = TextAlign.start,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(12),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: TextField(
+        controller: controller,
+        style: style,
+        textAlign: textAlign,
+        maxLines: maxLines,
+        textInputAction: textInputAction,
+        onChanged: onChanged != null ? (_) => onChanged!() : null,
+        onSubmitted: onSubmitted != null ? (_) => onSubmitted!() : null,
+        decoration: InputDecoration(
+          hintText: hintText,
+          hintStyle: hintStyle,
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          isDense: true,
+          contentPadding: EdgeInsets.zero,
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────
+//  Standard (Short Story / General) Editor
+// ─────────────────────────────────────────────
 class StandardEditorContent extends StatelessWidget {
   final TextEditingController titleController;
   final QuillController bodyController;
@@ -20,102 +88,71 @@ class StandardEditorContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+    return Column(
+      mainAxisSize: MainAxisSize.max,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _CardTextField(
+          controller: titleController,
+          hintText: 'Story title...',
+          style: const TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+            color: AppTheme.inkEspresso,
+            height: 1.2,
           ),
-        ],
-      ),
-      padding: const EdgeInsets.all(24),
-      child: Stack(
-        children: [
-          Positioned(
-            left: 0,
-            top: 0,
-            bottom: 0,
-            child: Container(
-              width: 3,
-              color: Colors.black12,
-            ),
+          hintStyle: TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+            color: AppTheme.inkUmber.withAlpha(76),
           ),
-
-          Padding(
-            padding: const EdgeInsets.only(left: 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Story Title
-                TextField(
-                  controller: titleController,
-                  style: const TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.inkEspresso,
-                    height: 1.2,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: 'Story title...',
-                    hintStyle: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.inkUmber.withValues(alpha: 0.3),
-                    ),
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                  maxLines: null,
-                  textInputAction: TextInputAction.next,
-                  onSubmitted: (_) => bodyFocusNode.requestFocus(),
-                  onChanged: (_) => onTitleChanged(),
-                ),
-
-                const SizedBox(height: 20),
-
-                metadataBar,
-
-                const SizedBox(height: 16),
-
-                // Formatting Toolbar
-                QuillSimpleToolbar(
-                  configurations: QuillSimpleToolbarConfigurations(
-                    controller: bodyController,
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-
-                // Editor
-                SizedBox(
-                  height: 500,
-                  child: QuillEditor.basic(
-                    focusNode: bodyFocusNode,
-                    scrollController: ScrollController(),
-                    configurations: QuillEditorConfigurations(
-                      controller: bodyController,
-                      scrollable: true,
-                      autoFocus: false,
-                      expands: false,
-                      padding: EdgeInsets.zero,
-                    ),
-                  ),
+          maxLines: null,
+          textInputAction: TextInputAction.next,
+          onChanged: onTitleChanged,
+          onSubmitted: bodyFocusNode.requestFocus,
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: metadataBar,
+        ),
+        Expanded(
+          child: Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withAlpha(12),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
                 ),
               ],
             ),
+            padding: const EdgeInsets.all(16),
+            child: QuillEditor(
+              focusNode: bodyFocusNode,
+              scrollController: ScrollController(),
+              configurations: QuillEditorConfigurations(
+                controller: bodyController,
+                readOnly: false,
+                autoFocus: false,
+                scrollable: true,
+                expands: true,
+                padding: EdgeInsets.zero,
+                placeholder: 'Start writing your story...',
+              ),
+            ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
 
+// ─────────────────────────────────────────────
+//  Novel Editor
+// ─────────────────────────────────────────────
 class NovelEditorContent extends StatelessWidget {
   final TextEditingController titleController;
   final TextEditingController chapterTitleController;
@@ -140,122 +177,88 @@ class NovelEditorContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+    return Column(
+      mainAxisSize: MainAxisSize.max,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _CardTextField(
+          controller: titleController,
+          hintText: 'Novel title...',
+          style: const TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+            color: AppTheme.inkEspresso,
+            height: 1.2,
           ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          // Book spine
-          Positioned(
-            left: 0,
-            top: 0,
-            bottom: 0,
-            child: Container(
-              width: 6,
-              decoration: BoxDecoration(
-                color: AppTheme.inkTerracotta.withValues(alpha: 0.2),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(20),
-                  bottomLeft: Radius.circular(20),
-                ),
-              ),
-            ),
+          hintStyle: TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+            color: AppTheme.inkUmber.withAlpha(76),
           ),
-
-          Padding(
-            padding: const EdgeInsets.fromLTRB(30, 24, 24, 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Novel Title
-                TextField(
-                  controller: titleController,
-                  style: const TextStyle(
-                    fontSize: 30,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.inkEspresso,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: 'Novel title...',
-                    border: InputBorder.none,
-                    hintStyle: TextStyle(
-                      color: AppTheme.inkUmber.withValues(alpha: 0.35),
-                      fontSize: 30,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  maxLines: null,
-                  onChanged: (_) => onTitleChanged(),
-                ),
-
-                const SizedBox(height: 12),
-
-                // Chapter Title
-                TextField(
-                  controller: chapterTitleController,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w500,
-                    color: AppTheme.inkEspresso,
-                  ),
-                  decoration: const InputDecoration(
-                    hintText: 'Chapter Title',
-                    border: InputBorder.none,
-                    hintStyle: TextStyle(
-                      color: AppTheme.inkUmber,
-                    ),
-                  ),
-                  onChanged: (_) => onChapterTitleChanged(),
-                ),
-
-                const SizedBox(height: 10),
-
-                metadataBar,
-
-                const SizedBox(height: 16),
-
-                // Formatting Toolbar
-                QuillSimpleToolbar(
-                  configurations: QuillSimpleToolbarConfigurations(
-                    controller: bodyController,
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-
-                // Editor
-                SizedBox(
-                  height: 500,
-                  child: QuillEditor.basic(
-                    focusNode: bodyFocusNode,
-                    scrollController: ScrollController(),
-                    configurations: QuillEditorConfigurations(
-                      controller: bodyController,
-                      scrollable: true,
-                      autoFocus: false,
-                      expands: false,
-                      padding: EdgeInsets.zero,
-                    ),
-                  ),
+          maxLines: null,
+          textInputAction: TextInputAction.next,
+          onChanged: onTitleChanged,
+        ),
+        const SizedBox(height: 10),
+        _CardTextField(
+          controller: chapterTitleController,
+          hintText: 'Chapter title...',
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w500,
+            color: AppTheme.inkEspresso,
+          ),
+          hintStyle: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w500,
+            color: AppTheme.inkUmber.withAlpha(100),
+          ),
+          textInputAction: TextInputAction.next,
+          onChanged: onChapterTitleChanged,
+          onSubmitted: bodyFocusNode.requestFocus,
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: metadataBar,
+        ),
+        Expanded(
+          child: Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withAlpha(12),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
                 ),
               ],
             ),
+            padding: const EdgeInsets.all(16),
+            child: QuillEditor(
+              focusNode: bodyFocusNode,
+              scrollController: ScrollController(),
+              configurations: QuillEditorConfigurations(
+                controller: bodyController,
+                readOnly: false,
+                autoFocus: false,
+                scrollable: true,
+                expands: true,
+                padding: EdgeInsets.zero,
+                placeholder: 'Start writing your story...',
+              ),
+            ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
 
+// ─────────────────────────────────────────────
+//  Poetry Editor
+// ─────────────────────────────────────────────
 class PoetryEditorContent extends StatelessWidget {
   final TextEditingController titleController;
   final QuillController bodyController;
@@ -274,82 +277,67 @@ class PoetryEditorContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+    return Column(
+      mainAxisSize: MainAxisSize.max,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        _CardTextField(
+          controller: titleController,
+          hintText: 'Poem title...',
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+            color: AppTheme.inkEspresso,
+            height: 1.2,
           ),
-        ],
-      ),
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // Poem Title
-          TextField(
-            controller: titleController,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.inkEspresso,
-              height: 1.2,
-            ),
-            decoration: InputDecoration(
-              hintText: 'Poem title...',
-              hintStyle: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.inkUmber.withValues(alpha: 0.3),
-              ),
-              border: InputBorder.none,
-              enabledBorder: InputBorder.none,
-              focusedBorder: InputBorder.none,
-              contentPadding: EdgeInsets.zero,
-            ),
-            maxLines: null,
-            textInputAction: TextInputAction.next,
-            onSubmitted: (_) => bodyFocusNode.requestFocus(),
-            onChanged: (_) => onTitleChanged(),
+          hintStyle: TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+            color: AppTheme.inkUmber.withAlpha(76),
           ),
+          maxLines: null,
+          textInputAction: TextInputAction.next,
+          onChanged: onTitleChanged,
+          onSubmitted: bodyFocusNode.requestFocus,
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: metadataBar,
+        ),
+        const SizedBox(height: 12),
 
-          const SizedBox(height: 20),
-
-          metadataBar,
-
-          const SizedBox(height: 16),
-
-          // Formatting Toolbar
-          QuillSimpleToolbar(
-            configurations: QuillSimpleToolbarConfigurations(
-              controller: bodyController,
+        Expanded(
+          child: Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withAlpha(12),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // Poetry Editor
-          SizedBox(
-            height: 500,
-            child: QuillEditor.basic(
+            padding: const EdgeInsets.all(16),
+            child: QuillEditor(
               focusNode: bodyFocusNode,
               scrollController: ScrollController(),
               configurations: QuillEditorConfigurations(
                 controller: bodyController,
-                scrollable: true,
+                readOnly: false,
                 autoFocus: false,
-                expands: false,
+                scrollable: true,
+                expands: true,
                 padding: EdgeInsets.zero,
+                placeholder: 'Start writing your story...',
               ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

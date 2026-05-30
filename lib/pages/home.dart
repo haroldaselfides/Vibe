@@ -13,7 +13,6 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int _selectedNavIndex = 0;
   int _selectedGenreIndex = 0;
 
   // User data from Firebase
@@ -156,7 +155,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
-      bottomNavigationBar: _buildBottomNavBar(),
     );
   }
 
@@ -720,60 +718,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: AppTheme.inkUmber, size: 20),
           ],
         ),
-      ),
-    );
-  }
-
-  // ── Bottom Nav Bar ─────────────────────────────────────────────────────────
-  Widget _buildBottomNavBar() {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppTheme.inkBgMain,
-        border: Border(top: BorderSide(color: AppTheme.inkCanvas, width: 1)),
-      ),
-      child: BottomNavigationBar(
-        currentIndex: _selectedNavIndex,
-        onTap: (index) {
-          if (index == 1) {
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const PostScreen()),
-            );
-            return;
-          }
-          setState(() => _selectedNavIndex = index);
-        },
-        backgroundColor: AppTheme.inkBgMain,
-        selectedItemColor: AppTheme.inkTerracotta,
-        unselectedItemColor: AppTheme.inkUmber,
-        type: BottomNavigationBarType.fixed,
-        elevation: 0,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            activeIcon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          // BottomNavigationBarItem(
-          //   icon: Icon(Icons.search_outlined),
-          //   activeIcon: Icon(Icons.search),
-          //   label: 'Explore',
-          // ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.edit_outlined),
-            activeIcon: Icon(Icons.edit),
-            label: 'Write',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.bookmark_outline),
-            activeIcon: Icon(Icons.bookmark),
-            label: 'Library',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            activeIcon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-        ],
       ),
     );
   }
