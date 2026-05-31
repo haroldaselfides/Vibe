@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../theme/app_theme.dart';
 import 'package:vibewrite_app/main_tabs/post/post.dart';
 import 'package:vibewrite_app/story/read_screen.dart';
+import 'package:vibewrite_app/pages/explore.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -341,9 +342,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ── Search Bar ─────────────────────────────────────────────────────────────
   Widget _buildSearchBar() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const ExploreScreen()),
+        );
+      },
       child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         height: 50,
         decoration: BoxDecoration(
           color: AppTheme.inkCanvas,

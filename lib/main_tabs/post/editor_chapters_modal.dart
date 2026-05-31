@@ -140,7 +140,9 @@ class _EditorChaptersSidebarContentState
           .toSet();
 
       int next = 1;
-      while (existing.contains(next)) next++;
+      while (existing.contains(next)) {
+        next++;
+      }
 
       if (mounted) {
         Navigator.pop(context);

@@ -36,7 +36,6 @@ class _LibraryScreenState extends State<LibraryScreen>
       backgroundColor: AppTheme.inkBgMain,
       elevation: 0,
       centerTitle: true,
-      automaticallyImplyLeading: false,  // ← add this`
       title: const Text(
           'Library',
           style: TextStyle(
@@ -52,7 +51,7 @@ class _LibraryScreenState extends State<LibraryScreen>
           indicatorColor: AppTheme.inkTerracotta,
           indicatorWeight: 3,
           labelColor: AppTheme.inkEspresso,
-          unselectedLabelColor: AppTheme.inkUmber.withOpacity(0.5),
+          unselectedLabelColor: AppTheme.inkUmber.withValues(alpha: 0.5),
           labelStyle:
               const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
           tabs: const [
@@ -396,36 +395,6 @@ class _LibraryScreenState extends State<LibraryScreen>
     }
   }
 
-  /// Call from the read screen whenever the user advances to a new chapter.
-  static Future<void> saveLastChapterRead(
-    String storyId,
-    int chapterNumber,
-  ) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    try {
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('readingProgress')
-          .doc(storyId)
-          .set(
-            {
-              'storyId': storyId,
-              'lastChapterNumber': chapterNumber,
-              'lastReadAt': FieldValue.serverTimestamp(),
-              'lastOpenedAt': FieldValue.serverTimestamp(),
-            },
-            SetOptions(merge: true),
-          );
-      debugPrint(
-          '✓ Reading progress saved: Chapter $chapterNumber of story $storyId');
-    } catch (e) {
-      debugPrint('✗ Error saving reading progress: $e');
-    }
-  }
-
   // ── Empty state ────────────────────────────────────────────────────────────
   Widget _buildEmptyState({required bool isCollection}) {
     return Center(
@@ -542,7 +511,7 @@ class _LibraryBookCard extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 10,
-                color: AppTheme.inkUmber.withOpacity(0.6),
+                color: AppTheme.inkUmber.withValues(alpha: 0.6),
               ),
             ),
           ),

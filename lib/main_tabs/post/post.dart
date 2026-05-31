@@ -440,7 +440,13 @@ class _PostScreenState extends State<PostScreen> {
       appBar: AppBar(
         backgroundColor: AppTheme.inkBgMain,
         elevation: 0,
-        leading: const SizedBox(),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, size: 18),
+          color: AppTheme.inkEspresso,
+          onPressed: () {
+            if (Navigator.of(context).canPop()) Navigator.of(context).pop();
+          },
+        ),
         title: const Text('My Stories',
             style: TextStyle(
               fontFamily: 'Paytone One',
@@ -577,6 +583,7 @@ class _PostScreenState extends State<PostScreen> {
       appBar: AppBar(
         backgroundColor: AppTheme.inkBgMain,
         elevation: 0,
+        automaticallyImplyLeading: false,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: AppTheme.inkEspresso),
           onPressed: _confirmDiscard,

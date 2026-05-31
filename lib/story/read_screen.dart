@@ -232,7 +232,6 @@ class _StoryReadScreenState extends State<StoryReadScreen>
   // ── Chapter state ─────────────────────────────────────
   String _currentContent = '';
   String _currentTitle = '';
-  String _currentContentType = '';
   int _currentChapterNum = 0;
 
   _ReadTheme get _theme => _kThemes[_themeIndex];
@@ -253,7 +252,6 @@ class _StoryReadScreenState extends State<StoryReadScreen>
 
     _currentChapterNum = widget.story['chapterNumber'] ?? 0;
     _currentTitle = widget.story['title'] ?? 'Untitled';
-    _currentContentType = widget.story['contentType'] ?? 'Chapter';
     _currentContent =
         widget.story['content'] ?? widget.story['body'] ?? 'No content available.';
 
@@ -316,7 +314,6 @@ class _StoryReadScreenState extends State<StoryReadScreen>
             setState(() {
               _currentChapterNum = chapterNum;
               _currentTitle = data['title'] ?? 'Untitled';
-              _currentContentType = data['contentType'] ?? 'Chapter';
               _currentContent = data['content'] ?? data['body'] ?? '';
             });
 
@@ -429,7 +426,6 @@ void _openChaptersModal() {
     setState(() {
       _currentChapterNum = chapterNumber;
       _currentTitle = data['title'] ?? 'Untitled';
-      _currentContentType = data['contentType'] ?? 'Chapter';
       _currentContent =
           data['content'] ?? data['body'] ?? 'No content available.';
       _scrollCtrl.jumpTo(0);
