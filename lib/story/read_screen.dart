@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:convert';
 import '../theme/app_theme.dart';
 
@@ -170,7 +171,6 @@ List<_Para> _buildParagraphs() {
 
   @override
   Widget build(BuildContext context) {
-    debugPrint('=== RAW DELTA: $rawContent');  
     final paragraphs = _buildParagraphs();
     final baseStyle = TextStyle(
       fontSize: fontSize,
@@ -229,7 +229,7 @@ class _StoryReadScreenState extends State<StoryReadScreen>
   late AnimationController _panelAnim;
   late Animation<double> _panelSlide;
 
-  // ── Chapter state ─────────────────────────────────────────────
+  // ── Chapter state ─────────────────────────────────────
   String _currentContent = '';
   String _currentTitle = '';
   String _currentContentType = '';
@@ -307,6 +307,9 @@ class _StoryReadScreenState extends State<StoryReadScreen>
             );
           }
 
+          // Save the chapter to library reading progress
+          await _saveLastChapterRead(storyId, chapterNum);
+
           await Future.delayed(const Duration(milliseconds: 400));
 
           if (mounted) {
@@ -317,12 +320,10 @@ class _StoryReadScreenState extends State<StoryReadScreen>
               _currentContent = data['content'] ?? data['body'] ?? '';
             });
 
-            // Scroll back to top for the new chapter
-            _scrollCtrl.animateTo(
-              0,
-              duration: const Duration(milliseconds: 500),
-              curve: Curves.easeOut,
-            );
+            // Jump to top for the new chapter (use jumpTo instead of animateTo to avoid scroll position issues)
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _scrollCtrl.jumpTo(0);
+            });
           }
         } else {
           // No more chapters — show end message
@@ -350,48 +351,81 @@ class _StoryReadScreenState extends State<StoryReadScreen>
     super.dispose();
   }
 
-  // ── Get chapter label ───────────────────────────────────────────
-  String _getChapterLabel() {
+    String _getChapterLabel() {
     final storyType = widget.story['storyType'] ?? '';
-    if (storyType == 'Poetry') {
-      // For poetry, show the poetry type (stored as genre) e.g. "HAIKU", "SONNET"
-      final genre = widget.story['genre'] ?? _currentContentType;
-      return genre.toString().toUpperCase();
+    final genre = widget.story['genre'] ?? '';
+
+    if (storyType.isNotEmpty && genre.isNotEmpty) {
+      return '${storyType.toUpperCase()} · ${genre.toUpperCase()}';
+    } else if (storyType.isNotEmpty) {
+      return storyType.toUpperCase();
     }
-    if (_currentContentType == 'Prologue') {
-      return 'PROLOGUE';
-    } else if (_currentContentType == 'Epilogue') {
-      return 'EPILOGUE';
-    } else {
-      return 'CHAPTER $_currentChapterNum';
-    }
+    return '';
   }
 
   // ── Open chapter modal ────────────────────────────────────────
-  void _openChaptersModal() {
-    final storyId = widget.story['storyId'] as String? ?? '';
-
-    if (storyId.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Story ID not found')),
-      );
-      return;
-    }
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _ChaptersListModal(
-        storyId: storyId,
-        currentChapterNum: _currentChapterNum,
-        onChapterSelected: _handleChapterSelected,
-      ),
+void _openChaptersModal() {
+  final storyId = widget.story['storyId'] as String? ?? '';
+  if (storyId.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Story ID not found')),
     );
+    return;
   }
+
+  showGeneralDialog(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: 'chapters-sidebar',
+    barrierColor: Colors.black.withValues(alpha: 0.45),
+    transitionDuration: const Duration(milliseconds: 300),
+    pageBuilder: (_, __, ___) => const SizedBox.shrink(),
+    transitionBuilder: (ctx, animation, _, __) {
+      final slide = Tween<Offset>(
+        begin: const Offset(1.0, 0.0),
+        end: Offset.zero,
+      ).animate(CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeInCubic,
+      ));
+
+      return Stack(
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.of(ctx).pop(),
+            behavior: HitTestBehavior.opaque,
+            child: const SizedBox.expand(),
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: SlideTransition(
+              position: slide,
+              child: _ChaptersListModal(
+                storyId: storyId,
+                currentChapterNum: _currentChapterNum,
+                onChapterSelected: (chapterNum, data) {
+                  _handleChapterSelected(chapterNum, data);
+                  Navigator.of(ctx).pop();
+                },
+              ),
+            ),
+          ),
+        ],
+      );
+    },
+  );
+}
 
   // ── Handle chapter tap ────────────────────────────────────────
   void _handleChapterSelected(int chapterNumber, Map<String, dynamic> data) {
+    final storyId = widget.story['storyId'] as String? ?? '';
+    
+    // Save the chapter selection to library
+    if (storyId.isNotEmpty) {
+      _saveLastChapterRead(storyId, chapterNumber);
+    }
+    
     setState(() {
       _currentChapterNum = chapterNumber;
       _currentTitle = data['title'] ?? 'Untitled';
@@ -400,6 +434,25 @@ class _StoryReadScreenState extends State<StoryReadScreen>
           data['content'] ?? data['body'] ?? 'No content available.';
       _scrollCtrl.jumpTo(0);
     });
+  }
+
+  /// Save the last chapter read to Firestore for library sync
+  Future<void> _saveLastChapterRead(String storyId, int chapterNumber) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(FirebaseAuth.instance.currentUser?.uid ?? '')
+          .collection('readingProgress')
+          .doc(storyId)
+          .set({
+            'storyId': storyId,
+            'lastChapterNumber': chapterNumber,
+            'lastReadAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+      debugPrint('✓ Reading progress saved: Chapter $chapterNumber of story $storyId');
+    } catch (e) {
+      debugPrint('✗ Error saving reading progress: $e');
+    }
   }
 
   void _togglePanel() {
@@ -734,7 +787,6 @@ class _StoryReadScreenState extends State<StoryReadScreen>
   }
 }
 
-// ── Chapters Modal ────────────────────────────────────────────────────────────
 class _ChaptersListModal extends StatelessWidget {
   final String storyId;
   final int currentChapterNum;
@@ -754,19 +806,11 @@ class _ChaptersListModal extends StatelessWidget {
 
   Color _getContentTypeColor(String contentType) {
     switch (contentType) {
-      case 'Prologue':
-        return AppTheme.inkTeal;
-      case 'Epilogue':
-        return AppTheme.inkTerracotta;
-      case 'Chapter':
-        return AppTheme.inkIndigo;
-      default:
-        return AppTheme.inkUmber;
+      case 'Prologue': return AppTheme.inkTeal;
+      case 'Epilogue': return AppTheme.inkTerracotta;
+      case 'Chapter':  return AppTheme.inkIndigo;
+      default:         return AppTheme.inkUmber;
     }
-  }
-
-  Color _getContentTypeBg(String contentType) {
-    return _getContentTypeColor(contentType).withValues(alpha: 0.12);
   }
 
   String _getBadgeLabel(int chapterNum, String contentType) {
@@ -777,251 +821,256 @@ class _ChaptersListModal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.75,
-      decoration: const BoxDecoration(
-        color: AppTheme.inkIvory,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: Column(
-        children: [
-          const SizedBox(height: 12),
-          Container(
-            width: 36,
-            height: 4,
-            decoration: BoxDecoration(
-              color: AppTheme.wabiSand,
-              borderRadius: BorderRadius.circular(2),
-            ),
+    final screenH = MediaQuery.of(context).size.height;
+
+    return Material(
+      color: Colors.transparent,
+      child: SafeArea(
+        child: Container(
+          width: 300,
+          height: screenH,
+          decoration: const BoxDecoration(
+            color: AppTheme.inkIvory,
+            borderRadius: BorderRadius.horizontal(left: Radius.circular(24)),
+            boxShadow: [
+              BoxShadow(
+                color: Color(0x33000000),
+                blurRadius: 32,
+                offset: Offset(-6, 0),
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
-
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Row(
-              children: [
-                const Text(
-                  'Chapters',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.inkEspresso,
-                  ),
-                ),
-                const Spacer(),
-                GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: AppTheme.inkCanvas,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.close,
-                      size: 16,
-                      color: AppTheme.inkUmber,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('stories')
-                  .doc(storyId)
-                  .collection('chapters')
-                  .orderBy('chapterNumber')
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return const Center(
-                    child: Text(
-                      'Error loading chapters',
-                      style: TextStyle(color: AppTheme.inkUmber),
-                    ),
-                  );
-                }
-                if (!snapshot.hasData) {
-                  return const Center(
-                    child: CircularProgressIndicator(
-                      color: AppTheme.inkTerracotta,
-                    ),
-                  );
-                }
-
-                final chapters = snapshot.data!.docs;
-
-                if (chapters.isEmpty) {
-                  return const Center(
-                    child: Text(
-                      'No chapters found',
-                      style: TextStyle(color: AppTheme.inkUmber),
-                    ),
-                  );
-                }
-
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 18, 16, 12),
+                child: Row(
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.only(left: 20, bottom: 12),
-                      child: Text(
-                        '${chapters.length} CHAPTERS',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.inkUmber,
-                          letterSpacing: 0.5,
-                        ),
+                    Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        color: AppTheme.inkTerracotta.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(9),
+                      ),
+                      child: const Icon(Icons.menu_book_outlined,
+                          size: 17, color: AppTheme.inkTerracotta),
+                    ),
+                    const SizedBox(width: 10),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Chapters',
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.inkEspresso,
+                              height: 1.1,
+                            ),
+                          ),
+                          Text(
+                            'Jump to a chapter',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: AppTheme.inkUmber,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    Expanded(
-                      child: ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                        itemCount: chapters.length,
-                        itemBuilder: (context, index) {
-                          final doc = chapters[index];
-                          final data = doc.data() as Map<String, dynamic>;
-                          final chapterNumber = data['chapterNumber'] ?? 0;
-                          final title = data['title'] ?? 'Untitled';
-                          final contentType = data['contentType'] ?? 'Chapter';
-                          final isSelected = chapterNumber == currentChapterNum;
-
-                          final typeColor = _getContentTypeColor(contentType);
-                          final typeBg = _getContentTypeBg(contentType);
-                          final badgeLabel = _getBadgeLabel(chapterNumber, contentType);
-
-                          return GestureDetector(
-                            onTap: () {
-                              onChapterSelected(chapterNumber, data);
-                              Navigator.pop(context);
-                            },
-                            child: Container(
-                              margin: const EdgeInsets.only(bottom: 10),
-                              padding: const EdgeInsets.all(14),
-                              decoration: BoxDecoration(
-                                color: AppTheme.inkCanvas,
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(
-                                  color: isSelected
-                                      ? AppTheme.inkTerracotta
-                                      : Colors.transparent,
-                                  width: 1,
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 38,
-                                    height: 38,
-                                    decoration: BoxDecoration(
-                                      color: isSelected
-                                          ? AppTheme.inkTerracotta
-                                          : AppTheme.inkIvory,
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: Center(
-                                      child: Text(
-                                        badgeLabel,
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w600,
-                                          color: isSelected
-                                              ? AppTheme.inkIvory
-                                              : AppTheme.inkUmber,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
-                                          children: [
-                                            Text(
-                                              _getChapterLabel(chapterNumber, contentType),
-                                              style: TextStyle(
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w600,
-                                                letterSpacing: 0.4,
-                                                color: isSelected
-                                                    ? AppTheme.inkTerracotta
-                                                    : AppTheme.inkUmber,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 6),
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(
-                                                  horizontal: 7, vertical: 2),
-                                              decoration: BoxDecoration(
-                                                color: typeBg,
-                                                borderRadius: BorderRadius.circular(10),
-                                              ),
-                                              child: Text(
-                                                contentType,
-                                                style: TextStyle(
-                                                  fontSize: 9,
-                                                  fontWeight: FontWeight.w700,
-                                                  color: typeColor,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          title.isEmpty ? 'Untitled' : title,
-                                          style: const TextStyle(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.bold,
-                                            color: AppTheme.inkEspresso,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-
-                                  if (isSelected) ...[
-                                    const SizedBox(width: 8),
-                                    Container(
-                                      width: 22,
-                                      height: 22,
-                                      decoration: const BoxDecoration(
-                                        color: AppTheme.inkTerracotta,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: const Icon(
-                                        Icons.check,
-                                        size: 13,
-                                        color: AppTheme.inkIvory,
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
-                          );
-                        },
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        width: 30,
+                        height: 30,
+                        decoration: BoxDecoration(
+                          color: AppTheme.inkCanvas,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.close,
+                            size: 15, color: AppTheme.inkUmber),
                       ),
                     ),
                   ],
-                );
-              },
-            ),
+                ),
+              ),
+
+              // Chapter list
+              Expanded(
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('stories')
+                      .doc(storyId)
+                      .collection('chapters')
+                      .orderBy('chapterNumber')
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasError) {
+                      return const Center(child: Text('Error loading chapters'));
+                    }
+                    if (!snapshot.hasData) {
+                      return const Center(
+                        child: CircularProgressIndicator(color: AppTheme.inkTerracotta),
+                      );
+                    }
+
+                    final chapters = snapshot.data!.docs;
+                    if (chapters.isEmpty) {
+                      return const Center(child: Text('No chapters found'));
+                    }
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(left: 16, bottom: 8),
+                          child: Text(
+                            '${chapters.length} CHAPTERS',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1.0,
+                              color: AppTheme.inkUmber.withValues(alpha: 0.7),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: ListView.builder(
+                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                            itemCount: chapters.length,
+                            itemBuilder: (context, index) {
+                              final data = chapters[index].data() as Map<String, dynamic>;
+                              final chapterNumber = data['chapterNumber'] as int? ?? 0;
+                              final contentType = data['contentType'] as String? ?? 'Chapter';
+                              final title = data['title'] as String? ?? '';
+                              final isSelected = chapterNumber == currentChapterNum;
+                              final typeColor = _getContentTypeColor(contentType);
+                              final badgeLabel = _getBadgeLabel(chapterNumber, contentType);
+
+                              return GestureDetector(
+                                onTap: () => onChapterSelected(chapterNumber, data),
+                                child: Container(
+                                  margin: const EdgeInsets.only(bottom: 10),
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.inkCanvas,
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? AppTheme.inkTerracotta
+                                          : Colors.transparent,
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 36,
+                                        height: 36,
+                                        decoration: BoxDecoration(
+                                          color: isSelected
+                                              ? AppTheme.inkTerracotta
+                                              : AppTheme.inkIvory,
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            badgeLabel,
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
+                                              color: isSelected
+                                                  ? AppTheme.inkIvory
+                                                  : AppTheme.inkUmber,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                Text(
+                                                  _getChapterLabel(chapterNumber, contentType),
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w600,
+                                                    letterSpacing: 0.4,
+                                                    color: isSelected
+                                                        ? AppTheme.inkTerracotta
+                                                        : AppTheme.inkUmber,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 6),
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(
+                                                      horizontal: 6, vertical: 2),
+                                                  decoration: BoxDecoration(
+                                                    color: typeColor.withValues(alpha: 0.12),
+                                                    borderRadius: BorderRadius.circular(10),
+                                                  ),
+                                                  child: Text(
+                                                    contentType,
+                                                    style: TextStyle(
+                                                      fontSize: 9,
+                                                      fontWeight: FontWeight.w700,
+                                                      color: typeColor,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            if (title.isNotEmpty) ...[
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                title,
+                                                style: const TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: AppTheme.inkEspresso,
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      ),
+                                      if (isSelected) ...[
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          width: 20,
+                                          height: 20,
+                                          decoration: const BoxDecoration(
+                                            color: AppTheme.inkTerracotta,
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(Icons.check,
+                                              size: 12, color: AppTheme.inkIvory),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

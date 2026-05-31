@@ -338,34 +338,37 @@ class _StorySetupModalContentState
                       const SizedBox(height: 20),
 
                       // Content Type Section (Different based on story type)
-                      if (isPoetry)
-                        _buildSection(
-                          label: 'THEME',
-                          options: _poetryThemeIcons.keys.toList(),
-                          selected: _selectedContentType.isNotEmpty
-                              ? _selectedContentType
-                              : 'Love',
-                          colorFn: _getPoetryThemeColor,
-                          iconMap: _poetryThemeIcons,
-                          onChanged: (v) {
-                            setState(() => _selectedContentType = v);
-                            widget.onContentTypeChanged(v);
-                          },
-                        )
-                      else
-                        _buildSection(
-                          label: 'CONTENT TYPE',
-                          options: widget.contentTypes,
-                          selected: _selectedContentType.isNotEmpty
-                              ? _selectedContentType
-                              : widget.contentType,
-                          colorFn: widget.contentTypeColor,
-                          iconMap: _contentTypeIcons,
-                          onChanged: (v) {
-                            setState(() => _selectedContentType = v);
-                            widget.onContentTypeChanged(v);
-                          },
-                        ),
+                      // AFTER
+                // Content Type Section (Hidden for Short Story and Flash Fiction)
+                  if (isPoetry)
+                    _buildSection(
+                      label: 'THEME',
+                      options: _poetryThemeIcons.keys.toList(),
+                      selected: _selectedContentType.isNotEmpty
+                          ? _selectedContentType
+                          : 'Love',
+                      colorFn: _getPoetryThemeColor,
+                      iconMap: _poetryThemeIcons,
+                      onChanged: (v) {
+                        setState(() => _selectedContentType = v);
+                        widget.onContentTypeChanged(v);
+                      },
+                    )
+                  else if (_selectedStoryType != 'Short Story' &&
+                          _selectedStoryType != 'Flash Fiction')
+                    _buildSection(
+                      label: 'CONTENT TYPE',
+                      options: widget.contentTypes,
+                      selected: _selectedContentType.isNotEmpty
+                          ? _selectedContentType
+                          : widget.contentType,
+                      colorFn: widget.contentTypeColor,
+                      iconMap: _contentTypeIcons,
+                      onChanged: (v) {
+                        setState(() => _selectedContentType = v);
+                        widget.onContentTypeChanged(v);
+                      },
+                    ),
                     ],
                   ),
                 ),

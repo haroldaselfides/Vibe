@@ -442,7 +442,11 @@ class _PostScreenState extends State<PostScreen> {
         elevation: 0,
         leading: const SizedBox(),
         title: const Text('My Stories',
-            style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppTheme.inkEspresso)),
+            style: TextStyle(
+              fontFamily: 'Paytone One',
+              fontSize: 17, 
+              fontWeight: FontWeight.bold, 
+              color: AppTheme.inkEspresso)),
         centerTitle: true,
       ),
       body: currentUser == null
