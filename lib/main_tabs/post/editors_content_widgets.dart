@@ -67,6 +67,50 @@ class _CardTextField extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────
+//  Shared Quill editor container
+// ─────────────────────────────────────────────
+class _QuillEditorCard extends StatelessWidget {
+  final QuillController controller;
+  final FocusNode focusNode;
+  final String placeholder;
+
+  const _QuillEditorCard({
+    required this.controller,
+    required this.focusNode,
+    this.placeholder = 'Start writing...',
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(12),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(16),
+      child: QuillEditor(
+        controller: controller,
+        focusNode: focusNode,
+        scrollController: ScrollController(),
+        config: QuillEditorConfig(
+          placeholder: placeholder,
+          expands: false,
+          padding: EdgeInsets.zero,
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────
 //  Standard (Short Story / General) Editor
 // ─────────────────────────────────────────────
 class StandardEditorContent extends StatelessWidget {
@@ -115,25 +159,10 @@ class StandardEditorContent extends StatelessWidget {
           child: metadataBar,
         ),
         Expanded(
-          child: Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withAlpha(12),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            padding: const EdgeInsets.all(16),
-            child: QuillEditor(
-              controller: bodyController,
-              focusNode: bodyFocusNode,
-              scrollController: ScrollController(),
-            ),
+          child: _QuillEditorCard(
+            controller: bodyController,
+            focusNode: bodyFocusNode,
+            placeholder: 'Begin your story...',
           ),
         ),
       ],
@@ -213,25 +242,10 @@ class NovelEditorContent extends StatelessWidget {
           child: metadataBar,
         ),
         Expanded(
-          child: Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withAlpha(12),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            padding: const EdgeInsets.all(16),
-            child: QuillEditor(
-              controller: bodyController,
-              focusNode: bodyFocusNode,
-              scrollController: ScrollController(),
-            ),
+          child: _QuillEditorCard(
+            controller: bodyController,
+            focusNode: bodyFocusNode,
+            placeholder: hintText,
           ),
         ),
       ],
@@ -289,27 +303,11 @@ class PoetryEditorContent extends StatelessWidget {
           child: metadataBar,
         ),
         const SizedBox(height: 12),
-
         Expanded(
-          child: Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withAlpha(12),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            padding: const EdgeInsets.all(16),
-            child: QuillEditor(
-              controller: bodyController,
-              focusNode: bodyFocusNode,
-              scrollController: ScrollController(),
-            ),
+          child: _QuillEditorCard(
+            controller: bodyController,
+            focusNode: bodyFocusNode,
+            placeholder: 'Write your poem...',
           ),
         ),
       ],

@@ -151,8 +151,7 @@ class _PostScreenState extends State<PostScreen> {
                 chapterDocument = Document.fromJson(decoded);
               } catch (e) {
                 debugPrint('Error parsing body JSON string: $e');
-                document = Document()
-                  ..insert(0, bodyData);
+                document = Document()..insert(0, bodyData);
               }
             }
 
@@ -431,7 +430,7 @@ class _PostScreenState extends State<PostScreen> {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // LIST VIEW (with bottom nav bar)
+  // LIST VIEW
   // ═══════════════════════════════════════════════════════════════════════════
   Widget _buildListView() {
     final currentUser = FirebaseAuth.instance.currentUser;
@@ -485,7 +484,7 @@ class _PostScreenState extends State<PostScreen> {
                             children: [
                               Icon(Icons.edit_note,
                                   size: 56, color: AppTheme.inkUmber.withValues(alpha: 0.25)),
-                              const SizedBox(height: 14),
+                              const SizedBox(height: 12),
                               Text('No stories yet',
                                   style: TextStyle(
                                       fontSize: 16,
@@ -511,8 +510,14 @@ class _PostScreenState extends State<PostScreen> {
                         return bTs.compareTo(aTs);
                       });
 
-                      return ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                      return GridView.builder(
+                        padding: const EdgeInsets.fromLTRB(10, 12, 10, 16),
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                          childAspectRatio: 0.72,
+                        ),
                         itemCount: sorted.length,
                         itemBuilder: (context, index) {
                           final doc = sorted[index];
@@ -556,12 +561,11 @@ class _PostScreenState extends State<PostScreen> {
                 ),
               ],
             ),
-      // ✅ Navigation bar is handled by MainNavigationScreen
     );
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // EDITOR VIEW (no bottom nav bar - user is focused on writing)
+  // EDITOR VIEW
   // ═══════════════════════════════════════════════════════════════════════════
   Widget _buildEditorView() {
     return Scaffold(
@@ -654,24 +658,52 @@ class _PostScreenState extends State<PostScreen> {
               child: _buildEditorContent(),
             ),
           ),
-
           Container(
             decoration: BoxDecoration(
               color: AppTheme.inkCanvas,
               border: Border(
                   top: BorderSide(color: AppTheme.inkUmber.withValues(alpha: 0.12))),
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  child: QuillSimpleToolbar(
-                    controller: _bodyController,
+            child: SafeArea(
+              top: false,
+              child: SizedBox(
+                width: double.infinity,
+                child: QuillSimpleToolbar(
+                  controller: _bodyController,
+                  config: QuillSimpleToolbarConfig(
+                    showAlignmentButtons: true,
+                    showLeftAlignment: true,
+                    showCenterAlignment: true,
+                    showRightAlignment: true,
+                    showJustifyAlignment: true,
+                    showBoldButton: true,
+                    showItalicButton: true,
+                    showUnderLineButton: true,
+                    showStrikeThrough: true,
+                    showListBullets: true,
+                    showListNumbers: true,
+                    showQuote: true,
+                    showIndent: false,
+                    showLink: false,
+                    showSearchButton: false,
+                    showSubscript: false,
+                    showSuperscript: false,
+                    showHeaderStyle: false,
+                    showSmallButton: false,
+                    showInlineCode: false,
+                    showColorButton: false,
+                    showBackgroundColorButton: false,
+                    showClearFormat: true,
+                    showUndo: true,
+                    showRedo: true,
+                    showFontFamily: false,
+                    showFontSize: false,
+                    showDividers: true,
+                    multiRowsDisplay: false,
+                    toolbarSize: 42,
                   ),
                 ),
-              ],
+              ),
             ),
           ),
         ],
@@ -714,11 +746,31 @@ class _PostScreenState extends State<PostScreen> {
     }
   }
 
+  // ── Metadata bar ──────────────────────────────────────────────────────────
+  // Shows genre · storyType · @author · wordCount · saved icon.
+  // Reads directly from state so it re-renders on every setState() call,
+  // including those triggered by the modal's onGenreChanged /
+  // onStoryTypeChanged / onContentTypeChanged callbacks.
   Widget _buildMetadataBar() {
+    final isPoetry = _storyType == 'Poetry';
+
+    // For poetry: show poetry-type (stored in _selectedGenre) and theme
+    // (stored in _contentType). For everything else: show genre and storyType.
+    final String leftLabel = _selectedGenre;
+    final String rightLabel = isPoetry ? _contentType : _storyType;
+
+    final Color leftColor = isPoetry
+        ? PostScreenUtils.getContentTypeColor(_selectedGenre)
+        : PostScreenUtils.getGenreTagColor(_selectedGenre);
+    final Color rightColor = isPoetry
+        ? PostScreenUtils.getContentTypeColor(_contentType)
+        : PostScreenUtils.getStoryTypeTagColor(_storyType);
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 14),
       child: Row(
         children: [
+          // Decorative dash
           Container(
             width: 32,
             height: 3,
@@ -728,15 +780,18 @@ class _PostScreenState extends State<PostScreen> {
             ),
           ),
           const SizedBox(width: 8),
+
+          // Left tag (genre or poetry-type)
           Text(
-            _selectedGenre,
+            leftLabel,
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w600,
-              color: PostScreenUtils.getGenreTagColor(_selectedGenre),
+              color: leftColor,
               letterSpacing: 0.5,
             ),
           ),
+
           const SizedBox(width: 6),
           Text(
             '·',
@@ -746,15 +801,19 @@ class _PostScreenState extends State<PostScreen> {
             ),
           ),
           const SizedBox(width: 6),
+
+          // Right tag (storyType or theme)
           Text(
-            _storyType,
+            rightLabel,
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w600,
-              color: PostScreenUtils.getStoryTypeTagColor(_storyType),
+              color: rightColor,
               letterSpacing: 0.5,
             ),
           ),
+
+          // Author name
           if (_authorName.isNotEmpty) ...[
             const SizedBox(width: 10),
             Text(
@@ -765,7 +824,10 @@ class _PostScreenState extends State<PostScreen> {
               ),
             ),
           ],
+
           const Spacer(),
+
+          // Word count
           Text(
             '$_wordCount words',
             style: TextStyle(
@@ -773,6 +835,8 @@ class _PostScreenState extends State<PostScreen> {
               color: AppTheme.inkUmber.withValues(alpha: 0.6),
             ),
           ),
+
+          // Saved indicator
           if (_isSaved) ...[
             const SizedBox(width: 10),
             Icon(
@@ -786,6 +850,11 @@ class _PostScreenState extends State<PostScreen> {
     );
   }
 
+  // ── Story setup modal ─────────────────────────────────────────────────────
+  // KEY FIX: every callback calls setState() so _buildMetadataBar() re-renders
+  // immediately — even while the modal overlay is still open — because the
+  // parent Scaffold rebuilds and the metadata bar is part of the editor body
+  // that sits *behind* the modal (still rendered, just overlaid).
   void _openStorySetupModal() {
     StorySetupModal.show(
       context: context,
@@ -795,9 +864,34 @@ class _PostScreenState extends State<PostScreen> {
       storyTypes: _storyTypes,
       genres: _genres,
       contentTypes: _contentTypes,
-      onGenreChanged: (value) => setState(() => _selectedGenre = value),
-      onStoryTypeChanged: (value) => setState(() => _storyType = value),
-      onContentTypeChanged: (value) => setState(() => _contentType = value),
+      onGenreChanged: (value) {
+        if (mounted) setState(() => _selectedGenre = value);
+      },
+      onStoryTypeChanged: (value) {
+        if (mounted) {
+          setState(() {
+            _storyType = value;
+            // Reset to sensible defaults when switching types
+            if (value == 'Poetry') {
+              _selectedGenre = 'Lyric Poetry';
+              _contentType = 'Love';
+            } else {
+              // Coming back from poetry: restore prose defaults if needed
+              final validGenres = ['Romance', 'Mystery', 'Fantasy', 'Sci-Fi', 'Drama', 'Horror', 'Thriller'];
+              if (!validGenres.contains(_selectedGenre)) {
+                _selectedGenre = 'Romance';
+              }
+              final validContentTypes = ['Prologue', 'Chapter', 'Epilogue'];
+              if (!validContentTypes.contains(_contentType)) {
+                _contentType = 'Chapter';
+              }
+            }
+          });
+        }
+      },
+      onContentTypeChanged: (value) {
+        if (mounted) setState(() => _contentType = value);
+      },
       genreColor: PostScreenUtils.getGenreTagColor,
       storyTypeColor: PostScreenUtils.getStoryTypeTagColor,
       contentTypeColor: PostScreenUtils.getContentTypeColor,

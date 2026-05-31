@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:convert';
 import '../theme/app_theme.dart';
 
 // ── Reading theme data ────────────────────────────────────────────────────────
@@ -48,6 +49,160 @@ const List<_ReadTheme> _kThemes = [
     border: Color(0xFF3A3A3A),
   ),
 ];
+
+// ── Delta → RichText renderer ─────────────────────────────────────────────────
+// Parses a Quill Delta JSON string (or raw list) and renders it as a Flutter
+// RichText widget, honouring bold, italic, underline, and strikethrough.
+class _DeltaText extends StatelessWidget {
+  final String rawContent;
+  final double fontSize;
+  final Color color;
+
+  const _DeltaText({
+    required this.rawContent,
+    required this.fontSize,
+    required this.color,
+  });
+
+  // Parse ops into paragraphs: each paragraph has a list of spans + alignment
+List<_Para> _buildParagraphs() {
+  dynamic decoded;
+  try {
+    decoded = jsonDecode(rawContent);
+  } catch (_) {
+    // Plain text fallback — split by newline and render each line
+    return rawContent
+        .split('\n')
+        .map((line) => _Para(
+              spans: line.isEmpty ? [] : [TextSpan(text: line)],
+              align: TextAlign.start,
+            ))
+        .toList();
+      }
+
+  List<dynamic> ops;
+  if (decoded is List) {
+    ops = decoded;
+  } else if (decoded is Map && decoded['ops'] is List) {
+    ops = decoded['ops'] as List<dynamic>;
+  } else {
+    return [_Para(spans: [TextSpan(text: rawContent)], align: TextAlign.start)];
+  }
+
+  final paragraphs = <_Para>[];
+  var currentSpans = <TextSpan>[];
+
+  for (final op in ops) {
+    if (op is! Map) continue;
+    final insert = op['insert'];
+    if (insert == null || insert is! String) continue;
+
+    final attrs = op['attributes'];
+    final align = _parseAlign(attrs);
+
+    // Check if this op is purely newlines (e.g. "\n" or "\n\n")
+    // In Quill Delta, a pure-newline op carries the block alignment
+    // for ALL the newlines it contains.
+    if (insert.isNotEmpty && insert.replaceAll('\n', '').isEmpty) {
+      // Every \n in this op flushes the current spans with this alignment
+      for (int i = 0; i < insert.length; i++) {
+        paragraphs.add(_Para(spans: List.of(currentSpans), align: align));
+        currentSpans = [];
+      }
+      continue;
+    }
+
+    // Mixed content op — split on \n
+    final bool bold      = attrs is Map && attrs['bold']      == true;
+    final bool italic    = attrs is Map && attrs['italic']    == true;
+    final bool underline = attrs is Map && attrs['underline'] == true;
+    final bool strike    = attrs is Map && attrs['strike']    == true;
+
+    final parts = insert.split('\n');
+    for (int i = 0; i < parts.length; i++) {
+      final text = parts[i];
+      if (text.isNotEmpty) {
+        currentSpans.add(TextSpan(
+          text: text,
+          style: TextStyle(
+            fontWeight: bold   ? FontWeight.bold   : FontWeight.normal,
+            fontStyle:  italic ? FontStyle.italic  : FontStyle.normal,
+            decoration: _buildDecoration(underline, strike),
+            decorationColor: color,
+          ),
+        ));
+      }
+      // Embedded \n — flush with start since no block attrs here
+      if (i < parts.length - 1) {
+        paragraphs.add(_Para(spans: List.of(currentSpans), align: TextAlign.start));
+        currentSpans = [];
+      }
+    }
+  }
+
+  // Flush remaining
+  if (currentSpans.isNotEmpty) {
+    paragraphs.add(_Para(spans: currentSpans, align: TextAlign.start));
+  }
+
+  return paragraphs;
+}
+
+  TextAlign _parseAlign(dynamic attrs) {
+    if (attrs is! Map) return TextAlign.start;
+    switch (attrs['align']) {
+      case 'center': return TextAlign.center;
+      case 'right':  return TextAlign.right;
+      case 'justify': return TextAlign.justify;
+      default:       return TextAlign.start;
+    }
+  }
+
+  TextDecoration _buildDecoration(bool underline, bool strike) {
+    if (underline && strike) {
+      return TextDecoration.combine(
+          [TextDecoration.underline, TextDecoration.lineThrough]);
+    }
+    if (underline) return TextDecoration.underline;
+    if (strike) return TextDecoration.lineThrough;
+    return TextDecoration.none;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    debugPrint('=== RAW DELTA: $rawContent');  
+    final paragraphs = _buildParagraphs();
+    final baseStyle = TextStyle(
+      fontSize: fontSize,
+      height: 1.9,
+      color: color,
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: paragraphs.map((para) {
+        if (para.spans.isEmpty) {
+          // Empty paragraph = spacer line
+          return SizedBox(height: fontSize * 1.9);
+        }
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 2),
+          child: RichText(
+            textAlign: para.align,
+            text: TextSpan(style: baseStyle, children: para.spans),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+// ── Paragraph model ───────────────────────────────────────────────────────────
+class _Para {
+  final List<TextSpan> spans;
+  final TextAlign align;
+  const _Para({required this.spans, required this.align});
+}
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 class StoryReadScreen extends StatefulWidget {
@@ -101,10 +256,95 @@ class _StoryReadScreenState extends State<StoryReadScreen>
     _currentContentType = widget.story['contentType'] ?? 'Chapter';
     _currentContent =
         widget.story['content'] ?? widget.story['body'] ?? 'No content available.';
+
+    _scrollCtrl.addListener(_onScroll);  
   }
+
+    void _onScroll() {
+      if (_scrollCtrl.position.pixels >= _scrollCtrl.position.maxScrollExtent - 80) {
+        _tryLoadNextChapter();
+      }
+    }
+
+    bool _loadingNext = false;
+
+    Future<void> _tryLoadNextChapter() async {
+      final storyType = widget.story['storyType'] ?? '';
+      final storyId = widget.story['storyId'] as String? ?? '';
+      
+      // Only for novels with a valid storyId
+      if (storyType != 'Novel' || storyId.isEmpty || _loadingNext) return;
+      
+      setState(() => _loadingNext = true);
+
+      try {
+        // Find the next chapter number
+        final nextChapterNum = _currentChapterNum + 1;
+
+        final snap = await FirebaseFirestore.instance
+            .collection('stories')
+            .doc(storyId)
+            .collection('chapters')
+            .where('chapterNumber', isGreaterThan: _currentChapterNum)
+            .orderBy('chapterNumber')
+            .limit(1)
+            .get();
+
+        if (snap.docs.isNotEmpty) {
+          final data = snap.docs.first.data();
+          final chapterNum = data['chapterNumber'] ?? nextChapterNum;
+
+          // Show a snackbar hint
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Loading Chapter $chapterNum...'),
+                duration: const Duration(seconds: 1),
+                backgroundColor: AppTheme.inkTerracotta,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            );
+          }
+
+          await Future.delayed(const Duration(milliseconds: 400));
+
+          if (mounted) {
+            setState(() {
+              _currentChapterNum = chapterNum;
+              _currentTitle = data['title'] ?? 'Untitled';
+              _currentContentType = data['contentType'] ?? 'Chapter';
+              _currentContent = data['content'] ?? data['body'] ?? '';
+            });
+
+            // Scroll back to top for the new chapter
+            _scrollCtrl.animateTo(
+              0,
+              duration: const Duration(milliseconds: 500),
+              curve: Curves.easeOut,
+            );
+          }
+        } else {
+          // No more chapters — show end message
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('You\'ve reached the end of this story.'),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        }
+      } catch (e) {
+        debugPrint('Error loading next chapter: $e');
+      } finally {
+        if (mounted) setState(() => _loadingNext = false);
+      }
+    }
 
   @override
   void dispose() {
+    _scrollCtrl.removeListener(_onScroll); 
     _scrollCtrl.dispose();
     _panelAnim.dispose();
     super.dispose();
@@ -112,6 +352,12 @@ class _StoryReadScreenState extends State<StoryReadScreen>
 
   // ── Get chapter label ───────────────────────────────────────────
   String _getChapterLabel() {
+    final storyType = widget.story['storyType'] ?? '';
+    if (storyType == 'Poetry') {
+      // For poetry, show the poetry type (stored as genre) e.g. "HAIKU", "SONNET"
+      final genre = widget.story['genre'] ?? _currentContentType;
+      return genre.toString().toUpperCase();
+    }
     if (_currentContentType == 'Prologue') {
       return 'PROLOGUE';
     } else if (_currentContentType == 'Epilogue') {
@@ -270,7 +516,7 @@ class _StoryReadScreenState extends State<StoryReadScreen>
                               ),
                             ),
                             const SizedBox(height: 10),
-                            // Chapter title
+                            // Chapter title — italic + centered for poetry
                             Text(
                               _currentTitle.isEmpty
                                   ? 'Untitled'
@@ -279,6 +525,9 @@ class _StoryReadScreenState extends State<StoryReadScreen>
                               style: TextStyle(
                                 fontSize: _fontSize + 12,
                                 fontWeight: FontWeight.bold,
+                                fontStyle: (widget.story['storyType'] == 'Poetry')
+                                    ? FontStyle.normal
+                                    : FontStyle.normal,
                                 color: _theme.text,
                                 height: 1.3,
                               ),
@@ -288,16 +537,49 @@ class _StoryReadScreenState extends State<StoryReadScreen>
                       ),
                       const SizedBox(height: 40),
                       const SizedBox(height: 24),
-                      // Story content
-                      Text(
-                        _currentContent,
-                        style: TextStyle(
-                          fontSize: _fontSize,
-                          height: 1.9,
-                          color: _theme.text,
-                        ),
+
+                      // ── Story content (Delta-aware) ──
+                      _DeltaText(
+                        rawContent: _currentContent,
+                        fontSize: _fontSize,
+                        color: _theme.text,
                       ),
+
                       const SizedBox(height: 100),
+
+                      // ── End of chapter indicator ──
+                      if (_loadingNext)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 40),
+                          child: Center(
+                            child: CircularProgressIndicator(color: AppTheme.inkTerracotta),
+                          ),
+                        )
+                      else
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 40),
+                          child: Center(
+                            child: Column(
+                              children: [
+                                Container(
+                                  width: 40,
+                                  height: 1,
+                                  color: AppTheme.inkUmber.withValues(alpha: 0.2),
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  '— end of chapter —',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppTheme.inkUmber.withValues(alpha: 0.4),
+                                    letterSpacing: 1,
+                                  ),
+                                ),
+                                const SizedBox(height: 60),
+                              ],
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -470,7 +752,6 @@ class _ChaptersListModal extends StatelessWidget {
     return 'Chapter $chapterNum';
   }
 
-  /// Badge label color per content type (using AppTheme)
   Color _getContentTypeColor(String contentType) {
     switch (contentType) {
       case 'Prologue':
@@ -484,12 +765,10 @@ class _ChaptersListModal extends StatelessWidget {
     }
   }
 
-  /// Badge background per content type
   Color _getContentTypeBg(String contentType) {
     return _getContentTypeColor(contentType).withValues(alpha: 0.12);
   }
 
-  /// Number badge letter for Prologue / Epilogue
   String _getBadgeLabel(int chapterNum, String contentType) {
     if (contentType == 'Prologue') return 'P';
     if (contentType == 'Epilogue') return 'E';
@@ -506,7 +785,6 @@ class _ChaptersListModal extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // ── Drag handle ──────────────────────────
           const SizedBox(height: 12),
           Container(
             width: 36,
@@ -518,7 +796,6 @@ class _ChaptersListModal extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          // ── Header ──────────────────────────────
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
@@ -554,7 +831,6 @@ class _ChaptersListModal extends StatelessWidget {
 
           const SizedBox(height: 12),
 
-          // ── Chapter list ─────────────────────────
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
@@ -591,7 +867,6 @@ class _ChaptersListModal extends StatelessWidget {
                   );
                 }
 
-                // ── Chapter count label ──────────────
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -643,7 +918,6 @@ class _ChaptersListModal extends StatelessWidget {
                               ),
                               child: Row(
                                 children: [
-                                  // ── Number badge ──────────────
                                   Container(
                                     width: 38,
                                     height: 38,
@@ -668,12 +942,10 @@ class _ChaptersListModal extends StatelessWidget {
                                   ),
                                   const SizedBox(width: 12),
 
-                                  // ── Chapter info ──────────────
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        // Label + type tag row
                                         Row(
                                           children: [
                                             Text(
@@ -707,15 +979,12 @@ class _ChaptersListModal extends StatelessWidget {
                                           ],
                                         ),
                                         const SizedBox(height: 4),
-                                        // Chapter title
                                         Text(
                                           title.isEmpty ? 'Untitled' : title,
-                                          style: TextStyle(
+                                          style: const TextStyle(
                                             fontSize: 15,
                                             fontWeight: FontWeight.bold,
-                                            color: isSelected
-                                                ? AppTheme.inkEspresso
-                                                : AppTheme.inkEspresso,
+                                            color: AppTheme.inkEspresso,
                                           ),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
@@ -724,7 +993,6 @@ class _ChaptersListModal extends StatelessWidget {
                                     ),
                                   ),
 
-                                  // ── Check icon ────────────────
                                   if (isSelected) ...[
                                     const SizedBox(width: 8),
                                     Container(

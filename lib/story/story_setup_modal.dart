@@ -118,10 +118,9 @@ class _StorySetupModalContent extends StatefulWidget {
 
 class _StorySetupModalContentState
     extends State<_StorySetupModalContent> {
-  // ✅ No `late` — safe from LateInitializationError
-  String _selectedGenre = '';
-  String _selectedStoryType = '';
-  String _selectedContentType = '';
+  late String _selectedGenre;
+  late String _selectedStoryType;
+  late String _selectedContentType;
 
   final Map<String, IconData> _storyTypeIcons = {
     'Short Story': Icons.description_outlined,
@@ -130,35 +129,129 @@ class _StorySetupModalContentState
     'Poetry': Icons.edit_outlined,
   };
 
+  // Regular Genres (for non-poetry)
   final Map<String, IconData> _genreIcons = {
-    'Romance':  Icons.favorite_outline,
-    'Mystery':  Icons.search,
-    'Fantasy':  Icons.auto_awesome_outlined,
-    'Sci-Fi':   Icons.rocket_launch_outlined,
-    'Drama':    Icons.theater_comedy_outlined,
-    'Horror':   Icons.dark_mode_outlined,
+    'Romance': Icons.favorite_outline,
+    'Mystery': Icons.search,
+    'Fantasy': Icons.auto_awesome_outlined,
+    'Sci-Fi': Icons.rocket_launch_outlined,
+    'Drama': Icons.theater_comedy_outlined,
+    'Horror': Icons.dark_mode_outlined,
     'Thriller': Icons.local_police_outlined,
   };
 
+  // Poetry Types
+  final Map<String, IconData> _poetryTypeIcons = {
+    'Lyric Poetry': Icons.favorite_outline,
+    'Narrative Poetry': Icons.book_outlined,
+    'Dramatic Poetry': Icons.theater_comedy_outlined,
+    'Epic Poetry': Icons.auto_awesome_outlined,
+    'Ballad': Icons.music_note_outlined,
+    'Ode': Icons.sentiment_satisfied_outlined,
+    'Elegy': Icons.cloud_outlined,
+    'Sonnet': Icons.edit_outlined,
+    'Haiku': Icons.nature_outlined,
+    'Free Verse': Icons.water_outlined,
+  };
+
+  // Regular Content Types
   final Map<String, IconData> _contentTypeIcons = {
     'Prologue': Icons.first_page_rounded,
-    'Chapter':  Icons.description_outlined,
+    'Chapter': Icons.description_outlined,
     'Epilogue': Icons.last_page_rounded,
+  };
+
+  // Poetry Themes
+  final Map<String, IconData> _poetryThemeIcons = {
+    'Love': Icons.favorite_rounded,
+    'Friendship': Icons.people_outline,
+    'Nature': Icons.nature_rounded,
+    'Graduation': Icons.school_rounded,
+    'Family': Icons.family_restroom_rounded,
+    'Loss': Icons.sentiment_very_dissatisfied_outlined,
+    'War': Icons.security_rounded,
+    'Adventure': Icons.hiking_rounded,
+    'Fantasy': Icons.auto_awesome_rounded,
+    'Hope': Icons.wb_sunny_rounded,
+    'Success': Icons.emoji_events_rounded,
+    'Spirituality': Icons.self_improvement_rounded,
+    'Patriotism': Icons.flag_rounded,
   };
 
   @override
   void initState() {
     super.initState();
-    _selectedGenre       = widget.selectedGenre;
-    _selectedStoryType   = widget.storyType;
+    _selectedGenre = widget.selectedGenre;
+    _selectedStoryType = widget.storyType;
     _selectedContentType = widget.contentType;
   }
 
-  // ── Build ────────────────────────────────────────────────────────────────
+  /// Get color for poetry types
+  Color _getPoetryTypeColor(String poetryType) {
+    switch (poetryType.toLowerCase()) {
+      case 'lyric poetry':
+        return const Color(0xFFD4557E);
+      case 'narrative poetry':
+        return const Color(0xFF7B68A6);
+      case 'dramatic poetry':
+        return const Color(0xFFB8860B);
+      case 'epic poetry':
+        return const Color(0xFF2E7D9F);
+      case 'ballad':
+        return const Color(0xFF5FA35C);
+      case 'ode':
+        return const Color(0xFFC85A54);
+      case 'elegy':
+        return const Color(0xFF4A4A4A);
+      case 'sonnet':
+        return const Color(0xFFD4557E);
+      case 'haiku':
+        return const Color(0xFF5FA35C);
+      case 'free verse':
+        return const Color(0xFF7B68A6);
+      default:
+        return const Color(0xFF8B8B8B);
+    }
+  }
+
+  /// Get color for poetry themes
+  Color _getPoetryThemeColor(String theme) {
+    switch (theme.toLowerCase()) {
+      case 'love':
+        return const Color(0xFFD4557E);
+      case 'friendship':
+        return const Color(0xFF5FA35C);
+      case 'nature':
+        return const Color(0xFF2E7D9F);
+      case 'graduation':
+        return const Color(0xFFB8860B);
+      case 'family':
+        return const Color(0xFF7B68A6);
+      case 'loss':
+        return const Color(0xFF4A4A4A);
+      case 'war':
+        return const Color(0xFFC85A54);
+      case 'adventure':
+        return const Color(0xFF5FA35C);
+      case 'fantasy':
+        return const Color(0xFF7B68A6);
+      case 'hope':
+        return const Color(0xFFB8860B);
+      case 'success':
+        return const Color(0xFFB8860B);
+      case 'spirituality':
+        return const Color(0xFF2E7D9F);
+      case 'patriotism':
+        return const Color(0xFFC85A54);
+      default:
+        return const Color(0xFF8B8B8B);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final screenH = MediaQuery.of(context).size.height;
+    final isPoetry = _selectedStoryType == 'Poetry';
 
     return Material(
       color: Colors.transparent,
@@ -187,6 +280,7 @@ class _StorySetupModalContentState
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Story Type Section (Always shown)
                       _buildSection(
                         label: 'STORY TYPE',
                         options: widget.storyTypes,
@@ -196,38 +290,82 @@ class _StorySetupModalContentState
                         colorFn: widget.storyTypeColor,
                         iconMap: _storyTypeIcons,
                         onChanged: (v) {
-                          setState(() => _selectedStoryType = v);
+                          setState(() {
+                            _selectedStoryType = v;
+                            // Reset genre and content type when changing story type
+                            if (v == 'Poetry') {
+                              _selectedGenre = 'Lyric Poetry';
+                              _selectedContentType = 'Love';
+                            } else {
+                              _selectedGenre = widget.selectedGenre;
+                              _selectedContentType = widget.contentType;
+                            }
+                          });
                           widget.onStoryTypeChanged(v);
                         },
                       ),
                       const SizedBox(height: 20),
-                      _buildSection(
-                        label: 'GENRE',
-                        options: widget.genres,
-                        selected: _selectedGenre.isNotEmpty
-                            ? _selectedGenre
-                            : widget.selectedGenre,
-                        colorFn: widget.genreColor,
-                        iconMap: _genreIcons,
-                        onChanged: (v) {
-                          setState(() => _selectedGenre = v);
-                          widget.onGenreChanged(v);
-                        },
-                      ),
+
+                      // Genre Section (Different based on story type)
+                      if (isPoetry)
+                        _buildSection(
+                          label: 'POETRY TYPE',
+                          options: _poetryTypeIcons.keys.toList(),
+                          selected: _selectedGenre.isNotEmpty
+                              ? _selectedGenre
+                              : 'Lyric Poetry',
+                          colorFn: _getPoetryTypeColor,
+                          iconMap: _poetryTypeIcons,
+                          onChanged: (v) {
+                            setState(() => _selectedGenre = v);
+                            widget.onGenreChanged(v);
+                          },
+                        )
+                      else
+                        _buildSection(
+                          label: 'GENRE',
+                          options: widget.genres,
+                          selected: _selectedGenre.isNotEmpty
+                              ? _selectedGenre
+                              : widget.selectedGenre,
+                          colorFn: widget.genreColor,
+                          iconMap: _genreIcons,
+                          onChanged: (v) {
+                            setState(() => _selectedGenre = v);
+                            widget.onGenreChanged(v);
+                          },
+                        ),
                       const SizedBox(height: 20),
-                      _buildSection(
-                        label: 'CONTENT TYPE',
-                        options: widget.contentTypes,
-                        selected: _selectedContentType.isNotEmpty
-                            ? _selectedContentType
-                            : widget.contentType,
-                        colorFn: widget.contentTypeColor,
-                        iconMap: _contentTypeIcons,
-                        onChanged: (v) {
-                          setState(() => _selectedContentType = v);
-                          widget.onContentTypeChanged(v);
-                        },
-                      ),
+
+                      // Content Type Section (Different based on story type)
+                      if (isPoetry)
+                        _buildSection(
+                          label: 'THEME',
+                          options: _poetryThemeIcons.keys.toList(),
+                          selected: _selectedContentType.isNotEmpty
+                              ? _selectedContentType
+                              : 'Love',
+                          colorFn: _getPoetryThemeColor,
+                          iconMap: _poetryThemeIcons,
+                          onChanged: (v) {
+                            setState(() => _selectedContentType = v);
+                            widget.onContentTypeChanged(v);
+                          },
+                        )
+                      else
+                        _buildSection(
+                          label: 'CONTENT TYPE',
+                          options: widget.contentTypes,
+                          selected: _selectedContentType.isNotEmpty
+                              ? _selectedContentType
+                              : widget.contentType,
+                          colorFn: widget.contentTypeColor,
+                          iconMap: _contentTypeIcons,
+                          onChanged: (v) {
+                            setState(() => _selectedContentType = v);
+                            widget.onContentTypeChanged(v);
+                          },
+                        ),
                     ],
                   ),
                 ),
@@ -346,7 +484,9 @@ class _StorySetupModalContentState
           children: options.map((option) {
             final isSelected = selected == option;
             final color = colorFn(option);
+            // Safely get icon with null coalescing
             final icon = iconMap[option] ?? Icons.category_outlined;
+            
             return GestureDetector(
               onTap: () => onChanged(option),
               child: AnimatedContainer(
@@ -368,11 +508,13 @@ class _StorySetupModalContentState
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(icon,
-                        size: 13,
-                        color: isSelected
-                            ? color
-                            : color.withValues(alpha: 0.6)),
+                    Icon(
+                      icon,
+                      size: 13,
+                      color: isSelected
+                          ? color
+                          : color.withValues(alpha: 0.6),
+                    ),
                     const SizedBox(width: 5),
                     Text(
                       option,

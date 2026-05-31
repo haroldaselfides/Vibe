@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-//import '../main_tabs/library.dart';
-import '../main_tabs/post/post.dart';
-import '../main_tabs/profile.dart';
-import '../pages/home.dart';
-import '../theme/app_theme.dart';
+import 'package:vibewrite_app/main_tabs/post/post.dart';
+import 'package:vibewrite_app/main_tabs/profile.dart';
+import 'package:vibewrite_app/main_tabs/library.dart';
+import 'package:vibewrite_app/pages/home.dart';
+import 'package:vibewrite_app/theme/app_theme.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
@@ -16,10 +16,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _selectedIndex = 0;
 
   final List<Widget> _screens = [
-    const HomeScreen(),
-    const PostScreen(),
-    // const LibraryScreen(),
-    const ProfileScreen(),
+    const HomeScreen(),     // Index 0: Home
+    const PostScreen(),     // Index 1: Write
+    const LibraryScreen(),  // Index 2: Library
+    const ProfileScreen(),  // Index 3: Profile
   ];
 
   @override
