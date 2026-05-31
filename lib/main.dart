@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_quill/flutter_quill.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:vibewrite_app/pages/home.dart';
 import 'package:vibewrite_app/pages/splash.dart';
 import 'package:vibewrite_app/pages/login.dart';
 import 'package:vibewrite_app/pages/signup.dart';
@@ -26,6 +27,22 @@ class MyApp extends StatelessWidget {
       title: 'VibeWrite',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        FlutterQuillLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('en', ''),
+        Locale('es', ''),
+        Locale('fr', ''),
+        Locale('de', ''),
+        Locale('zh', ''),
+        Locale('ar', ''),
+        Locale('ja', ''),
+        Locale('ko', ''),
+      ],
       home: const SplashScreen(),
       routes: {
         '/welcome': (context) => const WelcomeScreen(),

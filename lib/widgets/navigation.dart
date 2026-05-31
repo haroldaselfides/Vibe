@@ -1,23 +1,24 @@
 import 'package:flutter/material.dart';
-import '../main_tabs/explore.dart';
 //import '../main_tabs/library.dart';
 import '../main_tabs/post/post.dart';
 import '../main_tabs/profile.dart';
 import '../pages/home.dart';
+import '../theme/app_theme.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
 
   @override
   State<MainNavigationScreen> createState() => _MainNavigationScreenState();
-} 
+}
+
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _selectedIndex = 0;
 
   final List<Widget> _screens = [
     const HomeScreen(),
     const PostScreen(),
-   // const LibraryScreen(),
+    // const LibraryScreen(),
     const ProfileScreen(),
   ];
 
@@ -32,10 +33,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             _selectedIndex = index;
           });
         },
-        backgroundColor: Colors.white,
-        selectedItemColor: const Color(0xFF1E6B5C),
-        unselectedItemColor: const Color(0xFFB8B8B8),
+        backgroundColor: AppTheme.inkCanvas,
+        selectedItemColor: AppTheme.inkTerracotta,
+        unselectedItemColor: AppTheme.inkUmber.withValues(alpha: 0.5),
         type: BottomNavigationBarType.fixed,
+        elevation: 8,
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home_outlined),

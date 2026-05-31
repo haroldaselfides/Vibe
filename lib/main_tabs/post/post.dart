@@ -348,16 +348,12 @@ class _PostScreenState extends State<PostScreen> {
 
   void _openChaptersModal() {
     if (_savedStoryId == null || _savedStoryId!.isEmpty) return;
-    showModalBottomSheet(
+    EditorChaptersSidebar.show(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => EditorChaptersModal(
-        storyId: _savedStoryId!,
-        currentChapter: int.tryParse(_chapterController.text) ?? 1,
-        onChapterSelected: _handleChapterSelected,
-        onAddNewChapter: _handleAddNewChapter,
-      ),
+      storyId: _savedStoryId!,
+      currentChapter: int.tryParse(_chapterController.text) ?? 1,
+      onChapterSelected: _handleChapterSelected,
+      onAddNewChapter: _handleAddNewChapter,
     );
   }
 
@@ -672,33 +668,7 @@ class _PostScreenState extends State<PostScreen> {
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   child: QuillSimpleToolbar(
-                    configurations: QuillSimpleToolbarConfigurations(
-                      controller: _bodyController,
-                      toolbarIconAlignment: WrapAlignment.start,
-                      showBoldButton: true,
-                      showItalicButton: true,
-                      showUnderLineButton: true,
-                      showStrikeThrough: false,
-                      showInlineCode: true,
-                      showColorButton: true,
-                      showBackgroundColorButton: true,
-                      showClearFormat: true,
-                      showHeaderStyle: true,
-                      showListNumbers: true,
-                      showListBullets: true,
-                      showListCheck: true,
-                      showCodeBlock: true,
-                      showQuote: false,
-                      showIndent: false,
-                      showLink: false,
-                      showSearchButton: false,
-                      showUndo: true,
-                      showRedo: false,
-                      showFontFamily: false,
-                      showFontSize: false,
-                      showAlignmentButtons: false,
-                      showDividers: false,
-                    ),
+                    controller: _bodyController,
                   ),
                 ),
               ],
@@ -745,85 +715,76 @@ class _PostScreenState extends State<PostScreen> {
   }
 
   Widget _buildMetadataBar() {
-  return Padding(
-    padding: const EdgeInsets.symmetric(vertical: 14),
-    child: Row(
-      children: [
-        Container(
-          width: 32,
-          height: 3,
-          decoration: BoxDecoration(
-            color: AppTheme.inkTerracotta.withValues(alpha: 0.5),
-            borderRadius: BorderRadius.circular(2),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      child: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 3,
+            decoration: BoxDecoration(
+              color: AppTheme.inkTerracotta.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(2),
+            ),
           ),
-        ),
-        const SizedBox(width: 8),
-
-        Text(
-          _selectedGenre,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            color: PostScreenUtils.getGenreTagColor(_selectedGenre),
-            letterSpacing: 0.5,
-          ),
-        ),
-
-        const SizedBox(width: 6),
-        Text(
-          '·',
-          style: TextStyle(
-            fontSize: 11,
-            color: AppTheme.inkUmber.withValues(alpha: 0.5),
-          ),
-        ),
-
-        const SizedBox(width: 6),
-
-        Text(
-          _storyType,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            color: PostScreenUtils.getStoryTypeTagColor(_storyType),
-            letterSpacing: 0.5,
-          ),
-        ),
-
-        if (_authorName.isNotEmpty) ...[
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Text(
-            '@$_authorName',
+            _selectedGenre,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: PostScreenUtils.getGenreTagColor(_selectedGenre),
+              letterSpacing: 0.5,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            '·',
+            style: TextStyle(
+              fontSize: 11,
+              color: AppTheme.inkUmber.withValues(alpha: 0.5),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            _storyType,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: PostScreenUtils.getStoryTypeTagColor(_storyType),
+              letterSpacing: 0.5,
+            ),
+          ),
+          if (_authorName.isNotEmpty) ...[
+            const SizedBox(width: 10),
+            Text(
+              '@$_authorName',
+              style: TextStyle(
+                fontSize: 11,
+                color: AppTheme.inkUmber.withValues(alpha: 0.6),
+              ),
+            ),
+          ],
+          const Spacer(),
+          Text(
+            '$_wordCount words',
             style: TextStyle(
               fontSize: 11,
               color: AppTheme.inkUmber.withValues(alpha: 0.6),
             ),
           ),
+          if (_isSaved) ...[
+            const SizedBox(width: 10),
+            Icon(
+              Icons.cloud_done_outlined,
+              size: 13,
+              color: AppTheme.inkSage.withValues(alpha: 0.8),
+            ),
+          ],
         ],
-
-        // pushes everything after this to the right
-        const Spacer(),
-
-        Text(
-          '$_wordCount words',
-          style: TextStyle(
-            fontSize: 11,
-            color: AppTheme.inkUmber.withValues(alpha: 0.6),
-          ),
-        ),
-
-        if (_isSaved) ...[
-          const SizedBox(width: 10),
-          Icon(
-            Icons.cloud_done_outlined,
-            size: 13,
-            color: AppTheme.inkSage.withValues(alpha: 0.8),
-          ),
-        ],
-      ],
-    ),
-  );
-}
+      ),
+    );
+  }
 
   void _openStorySetupModal() {
     showModalBottomSheet(

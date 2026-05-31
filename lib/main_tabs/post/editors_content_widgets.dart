@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import 'package:flutter_quill/flutter_quill.dart';
@@ -131,17 +130,9 @@ class StandardEditorContent extends StatelessWidget {
             ),
             padding: const EdgeInsets.all(16),
             child: QuillEditor(
+              controller: bodyController,
               focusNode: bodyFocusNode,
               scrollController: ScrollController(),
-              configurations: QuillEditorConfigurations(
-                controller: bodyController,
-                readOnly: false,
-                autoFocus: false,
-                scrollable: true,
-                expands: true,
-                padding: EdgeInsets.zero,
-                placeholder: 'Start writing your story...',
-              ),
             ),
           ),
         ),
@@ -237,17 +228,9 @@ class NovelEditorContent extends StatelessWidget {
             ),
             padding: const EdgeInsets.all(16),
             child: QuillEditor(
+              controller: bodyController,
               focusNode: bodyFocusNode,
               scrollController: ScrollController(),
-              configurations: QuillEditorConfigurations(
-                controller: bodyController,
-                readOnly: false,
-                autoFocus: false,
-                scrollable: true,
-                expands: true,
-                padding: EdgeInsets.zero,
-                placeholder: 'Start writing your story...',
-              ),
             ),
           ),
         ),
@@ -323,17 +306,9 @@ class PoetryEditorContent extends StatelessWidget {
             ),
             padding: const EdgeInsets.all(16),
             child: QuillEditor(
+              controller: bodyController,
               focusNode: bodyFocusNode,
               scrollController: ScrollController(),
-              configurations: QuillEditorConfigurations(
-                controller: bodyController,
-                readOnly: false,
-                autoFocus: false,
-                scrollable: true,
-                expands: true,
-                padding: EdgeInsets.zero,
-                placeholder: 'Start writing your story...',
-              ),
             ),
           ),
         ),
