@@ -67,4 +67,56 @@ class PostScreenUtils {
     if (trimmedText.isEmpty) return 0;
     return trimmedText.split(RegExp(r'\s+')).length;
   }
+
+  /// Get icon for story type (for potential future use)
+  static IconData getStoryTypeIcon(String storyType) {
+    switch (storyType) {
+      case 'Novel':
+        return Icons.menu_book;
+      case 'Poetry':
+        return Icons.edit;
+      case 'Short Story':
+        return Icons.description;
+      case 'Flash Fiction':
+        return Icons.flash_on;
+      default:
+        return Icons.description;
+    }
+  }
+
+  /// Get icon for genre (for potential future use)
+  static IconData getGenreIcon(String genre) {
+    switch (genre) {
+      case 'Romance':
+        return Icons.favorite;
+      case 'Mystery':
+        return Icons.search;
+      case 'Fantasy':
+        return Icons.auto_awesome;
+      case 'Sci-Fi':
+        return Icons.rocket_launch;
+      case 'Drama':
+        return Icons.theater_comedy;
+      case 'Horror':
+        return Icons.dark_mode;
+      case 'Thriller':
+        return Icons.local_police;
+      default:
+        return Icons.category;
+    }
+  }
+
+  /// Get icon for content type (for potential future use)
+  static IconData getContentTypeIcon(String contentType) {
+    switch (contentType) {
+      case 'Prologue':
+        return Icons.menu_book;
+      case 'Epilogue':
+        return Icons.flag;
+      case 'Chapter':
+        return Icons.description;
+      default:
+        return Icons.description;
+    }
+  }
 }

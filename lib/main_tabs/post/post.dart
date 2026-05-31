@@ -787,24 +787,20 @@ class _PostScreenState extends State<PostScreen> {
   }
 
   void _openStorySetupModal() {
-    showModalBottomSheet(
+    StorySetupModal.show(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => StorySetupModal(
-        selectedGenre: _selectedGenre,
-        storyType: _storyType,
-        contentType: _contentType,
-        storyTypes: _storyTypes,
-        genres: _genres,
-        contentTypes: _contentTypes,
-        onGenreChanged: (value) => setState(() => _selectedGenre = value),
-        onStoryTypeChanged: (value) => setState(() => _storyType = value),
-        onContentTypeChanged: (value) => setState(() => _contentType = value),
-        genreColor: PostScreenUtils.getGenreTagColor,
-        storyTypeColor: PostScreenUtils.getStoryTypeTagColor,
-        contentTypeColor: PostScreenUtils.getContentTypeColor,
-      ),
+      selectedGenre: _selectedGenre,
+      storyType: _storyType,
+      contentType: _contentType,
+      storyTypes: _storyTypes,
+      genres: _genres,
+      contentTypes: _contentTypes,
+      onGenreChanged: (value) => setState(() => _selectedGenre = value),
+      onStoryTypeChanged: (value) => setState(() => _storyType = value),
+      onContentTypeChanged: (value) => setState(() => _contentType = value),
+      genreColor: PostScreenUtils.getGenreTagColor,
+      storyTypeColor: PostScreenUtils.getStoryTypeTagColor,
+      contentTypeColor: PostScreenUtils.getContentTypeColor,
     );
   }
 }
