@@ -83,16 +83,11 @@ class _SplashScreenState extends State<SplashScreen>
                   ),
                   const SizedBox(height: 28),
 
-                  // App name — espresso, editorial weight
-                  const Text(
-                    'VIBEWRITE',
-                    style: TextStyle(
-                      fontFamily: 'Paytone One',
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.inkEspresso,
-                      letterSpacing: 0.5,
-                    ),
+                  // App logo image
+                  Image.asset(
+                    'assets/images/vibewrite.png',
+                    height: 50,
+                    fit: BoxFit.contain,
                   ),
                   const SizedBox(height: 10),
                   const SizedBox(height: 48),

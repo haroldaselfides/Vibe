@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../theme/app_theme.dart';
 import '../../main_tabs/post/post_screen_utils.dart';
 import 'edit_profile.dart';
+import '../pages/settings.dart';
 
 class ProfileScreen extends StatefulWidget {
   final String? userId;
@@ -76,7 +77,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                           icon: Icon(Icons.settings_outlined,
                               size: 20, color: AppTheme.inkEspresso),
                           onPressed: () {
-                            // Navigate to settings
+                            Navigator.of(context).push(MaterialPageRoute(
+                              builder: (_) => const SettingsScreen(),
+                            ));
                           },
                         ),
                       ),

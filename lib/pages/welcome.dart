@@ -63,23 +63,55 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const SizedBox(height: 20),
-                        // Use asset logo if available, else fallback text
+                        // Logo image with fallback
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 40.0),
                           child: Image.asset(
-                            'assets/images/vibewrite_logo.png',
+                            'assets/images/vibewrite.png',
                             fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) => const Text(
-                              'VibeWrite',
-                              style: TextStyle(
-                                fontFamily: 'Paytone One',
-                                fontSize: 32,
-                                fontWeight: FontWeight.bold,
-                                color: AppTheme.inkEspresso,
-                              ),
+                            height: 300,
+                            errorBuilder: (_, __, ___) => Column(
+                              children: [
+                                // Fallback text logo with app theme colors
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Text(
+                                      'VIBEWRITE',
+                                      style: TextStyle(
+                                        fontFamily: 'Paytone One',
+                                        fontSize: 48,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppTheme.inkTerracotta,
+                                      ),
+                                    ),
+                                    const Text(
+                                      'WRITE',
+                                      style: TextStyle(
+                                        fontFamily: 'Paytone One',
+                                        fontSize: 48,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppTheme.inkEspresso,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+                                // Tagline
+                                Text(
+                                  'EVERY VIBE HAS A STORY',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    letterSpacing: 2.5,
+                                    color: AppTheme.inkUmber.withValues(alpha: 0.7),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
+                        const SizedBox(height: 30),
                       ],
                     ),
                   ),
@@ -103,6 +135,14 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         color: AppTheme.inkCanvas,
                         width: 0,
                       ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.08),
+                          blurRadius: 16,
+                          offset: const Offset(0, -4),
+                          spreadRadius: 2,
+                        ),
+                      ],
                     ),
                     padding: const EdgeInsets.fromLTRB(28, 36, 28, 32),
                     child: Column(
@@ -129,7 +169,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         ),
                         const SizedBox(height: 10),
                         const Text(
-                          'Hi there!',
+                          'Ready to share your vibe?',
                           style: TextStyle(
                             fontSize: 15,
                             color: AppTheme.inkEspresso,
@@ -137,13 +177,13 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                           ),
                         ),
                         const SizedBox(height: 6),
-                        const Text(
+                        Text(
                           'Meet new readers, share your stories.'
                           '\nJoin the community — it\'s free.',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 13,
-                            color: AppTheme.inkUmber,
+                            color: AppTheme.inkUmber.withValues(alpha: 0.7),
                             height: 1.6,
                           ),
                         ),
@@ -160,8 +200,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppTheme.inkTerracotta,
                               foregroundColor: Colors.white,
-                              shadowColor: Colors.transparent,
-                              elevation: 0,
+                              shadowColor: AppTheme.inkTerracotta.withValues(alpha: 0.3),
+                              elevation: 6,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(30),
                               ),
@@ -207,7 +247,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                           ),
                         ),
 
-                        const SizedBox(height: 50),
+                        const SizedBox(height: 20),
                       ],
                     ),
                   ),

@@ -1,6 +1,6 @@
 {
-    "name": "vibewrite_app",
-    "short_name": "vibewrite_app",
+    "name": "VIBEWRITE",
+    "short_name": "VIBEWRITE",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

@@ -6,6 +6,7 @@ import 'package:vibewrite_app/pages/splash.dart';
 import 'package:vibewrite_app/pages/login.dart';
 import 'package:vibewrite_app/pages/signup.dart';
 import 'package:vibewrite_app/pages/welcome.dart';
+import 'package:vibewrite_app/pages/settings.dart';
 import 'package:vibewrite_app/services/firebase_options.dart';
 import 'theme/app_theme.dart';
 import 'widgets/navigation.dart';
@@ -24,7 +25,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'VibeWrite',
+      title: 'VIBEWRITE',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       localizationsDelegates: const [
@@ -49,6 +50,7 @@ class MyApp extends StatelessWidget {
         '/login': (context) => const LoginScreen(),
         '/signup': (context) => const SignUpScreen(),
         '/home': (context) => const MainNavigationScreen(),
+        '/settings': (context) => const SettingsScreen(),
       },
     );
   }
