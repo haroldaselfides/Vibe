@@ -401,7 +401,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20),
-              color: AppTheme.inkCanvas,
+              color: AppTheme.inkEspresso,
               boxShadow: [
                 BoxShadow(
                   color: AppTheme.inkUmber.withValues(alpha: 0.18),
@@ -477,7 +477,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: TextStyle(
                         fontSize: 26,
                         fontWeight: FontWeight.bold,
-                        color: AppTheme.inkEspresso,
+                        color: AppTheme.inkIvory,
                         height: 1.2,
                       ),
                     ),
@@ -489,7 +489,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     const Text(
                       'Explore new stories',
                       style: TextStyle(
-                          fontSize: 13, color: AppTheme.inkUmber),
+                          fontSize: 13, color: AppTheme.inkBgCard),
                     ),
                     GestureDetector(
                       onTap: () => Navigator.of(context).push(
@@ -615,7 +615,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppTheme.inkCanvas,
+                color: AppTheme.inkEspresso,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Row(

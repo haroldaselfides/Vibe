@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../theme/app_theme.dart';
+import 'post_screen_utils.dart';
 
 class StoryCard extends StatelessWidget {
   final String docId;
@@ -17,236 +19,195 @@ class StoryCard extends StatelessWidget {
     required this.onDelete,
   });
 
-  Color _getGenreColor(String genre) {
-    switch (genre.toLowerCase()) {
-      case 'romance':   return const Color(0xFFD4557E);
-      case 'mystery':   return const Color(0xFF7B68A6);
-      case 'fantasy':   return const Color(0xFF5FA35C);
-      case 'sci-fi':    return const Color(0xFF2E7D9F);
-      case 'drama':     return const Color(0xFFB8860B);
-      case 'horror':    return const Color(0xFF4A4A4A);
-      case 'thriller':  return const Color(0xFFC85A54);
-      default:          return const Color(0xFF8B8B8B);
-    }
-  }
-
-  LinearGradient _getCoverGradient(String genre) {
-    final color = _getGenreColor(genre);
-    return LinearGradient(
-      colors: [
-        color.withValues(alpha: 0.95),
-        color.withValues(alpha: 0.6),
-      ],
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-    );
-  }
-
-  IconData _getGenreIcon(String genre) {
-    switch (genre.toLowerCase()) {
-      case 'romance':   return Icons.favorite_outline;
-      case 'mystery':   return Icons.search;
-      case 'fantasy':   return Icons.auto_awesome_outlined;
-      case 'sci-fi':    return Icons.rocket_launch_outlined;
-      case 'drama':     return Icons.theater_comedy_outlined;
-      case 'horror':    return Icons.dark_mode_outlined;
-      case 'thriller':  return Icons.local_police_outlined;
-      default:          return Icons.category_outlined;
-    }
-  }
   @override
-Widget build(BuildContext context) {
-  final genre = data['genre'] ?? 'Fantasy';
-  final title = data['title'] ?? 'Untitled';
-  final author = authorName.isEmpty ? 'Unknown' : authorName;
-  final genreColor = _getGenreColor(genre);
+  Widget build(BuildContext context) {
+    final genre = data['genre'] ?? 'Fantasy';
+    final title = data['title'] ?? 'Untitled';
+    final storyType = data['storyType'] ?? 'Short Story';
+    final wordCount = data['wordCount'] ?? 0;
+    
+    // Formatting timestamp safely
+    String formattedDate = '';
+    if (data['updatedAt'] != null && data['updatedAt'] is dynamic) {
+      try {
+        final timestamp = data['updatedAt'];
+        final dateTime = timestamp.toDate();
+        formattedDate = DateFormat('MMM d, yyyy').format(dateTime);
+      } catch (e) {
+        formattedDate = '';
+      }
+    }
 
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      // ── Cover (no buttons here anymore) ─────────────────────────
-      Container(
-        width: double.infinity,
-        height: 150,
-        decoration: BoxDecoration(
-          gradient: _getCoverGradient(genre),
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.10),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.white.withValues(alpha: 0.10),
-                    Colors.transparent,
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-            ),
-            Icon(
-              _getGenreIcon(genre),
-              size: 38,
-              color: Colors.white.withValues(alpha: 0.75),
-            ),
-          ],
-        ),
-      ),
+    // Get color profile matching the genre type
+    final baseColor = PostScreenUtils.getGenreTagColor(genre);
+    final pastelColor = _getRefinedPastelColor(genre);
 
-      const SizedBox(height: 8),
-
-      // ── Title ────────────────────────────────────────────────────
-      Text(
-        title,
-        style: const TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w700,
-          color: AppTheme.inkEspresso,
-          height: 1.2,
-        ),
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-      ),
-
-      const SizedBox(height: 2),
-
-      // ── Author ───────────────────────────────────────────────────
-      Text(
-        'By $author',
-        style: TextStyle(
-          fontSize: 10,
-          color: AppTheme.inkUmber.withValues(alpha: 0.6),
-          fontWeight: FontWeight.w500,
-        ),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-
-      const SizedBox(height: 5),
-
-      // ── Genre badge ──────────────────────────────────────────────
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        decoration: BoxDecoration(
-          color: genreColor.withValues(alpha: 0.10),
-          border: Border.all(
-            color: genreColor.withValues(alpha: 0.25),
-            width: 0.8,
-          ),
-          borderRadius: BorderRadius.circular(7),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(_getGenreIcon(genre), size: 9, color: genreColor),
-            const SizedBox(width: 3),
-            Text(
-              genre,
-              style: TextStyle(
-                fontSize: 9,
-                fontWeight: FontWeight.w600,
-                color: genreColor,
-              ),
-            ),
-          ],
-        ),
-      ),
-
-      const SizedBox(height: 8),
-
-      // ── Edit / Delete buttons ────────────────────────────────────
-      Row(
+    return GestureDetector(
+      onTap: onEdit,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Edit
-          Expanded(
-            child: GestureDetector(
-              onTap: onEdit,
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppTheme.inkTerracotta.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: AppTheme.inkTerracotta.withValues(alpha: 0.25),
-                    width: 0.8,
-                  ),
+          // 3D Bound Book Cover Component 
+          AspectRatio(
+            aspectRatio: 0.76, // Perfectly matching structural dimension ratio of your Library books
+            child: Container(
+              decoration: BoxDecoration(
+                color: pastelColor,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(6),
+                  bottomLeft: Radius.circular(6),
+                  topRight: Radius.circular(14),
+                  bottomRight: Radius.circular(14),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.edit_rounded,
-                      size: 14,
-                      color: AppTheme.inkTerracotta,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.12),
+                    blurRadius: 8,
+                    offset: const Offset(3, 4),
+                  ),
+                  BoxShadow(
+                    color: Colors.white.withValues(alpha: 0.4),
+                    blurRadius: 0,
+                    offset: const Offset(-1, 0), // Realistic paper page stack edge highlight
+                  ),
+                ],
+              ),
+              child: Stack(
+                children: [
+                  // Spine Crease Line Accent Layer
+                  Positioned(
+                    left: 8,
+                    top: 0,
+                    bottom: 0,
+                    child: Container(
+                      width: 1.5,
+                      color: Colors.black.withValues(alpha: 0.06),
                     ),
-                    const SizedBox(width: 3),
-                    Text(
-                      'Edit',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.inkTerracotta,
+                  ),
+                  // Left Spine Shaded Binding Ribbon Overlay
+                  Container(
+                    width: 8,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.black.withValues(alpha: 0.08),
+                          Colors.white.withValues(alpha: 0.08),
+                        ],
+                      ),
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(6),
+                        bottomLeft: Radius.circular(6),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                  // Centered Genre Icon Display
+                  Center(
+                    child: Opacity(
+                      opacity: 0.45,
+                      child: Icon(
+                        PostScreenUtils.getGenreIcon(genre),
+                        size: 36,
+                        color: AppTheme.inkEspresso,
+                      ),
+                    ),
+                  ),
+                  // Quick Management Actions Layer
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: PopupMenuButton<String>(
+                      icon: Icon(
+                        Icons.more_vert, 
+                        size: 18, 
+                        color: AppTheme.inkEspresso.withValues(alpha: 0.5)
+                      ),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(maxWidth: 110),
+                      color: AppTheme.inkBgMain,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      onSelected: (val) {
+                        if (val == 'delete') onDelete();
+                      },
+                      itemBuilder: (context) => [
+                        const PopupMenuItem(
+                          value: 'delete',
+                          height: 36,
+                          child: Row(
+                            children: [
+                              Icon(Icons.delete_outline, size: 16, color: AppTheme.inkTerracotta),
+                              SizedBox(width: 6),
+                              Text('Delete', style: TextStyle(fontSize: 12, color: AppTheme.inkTerracotta)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
-
-          const SizedBox(width: 6),
-
-          // Delete
-          Expanded(
-            child: GestureDetector(
-              onTap: onDelete,
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.red.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: Colors.red.withValues(alpha: 0.20),
-                    width: 0.8,
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.delete_rounded,
-                      size: 14,
-                      color: Colors.red.shade400,
-                    ),
-                    const SizedBox(width: 3),
-                    Text(
-                      'Delete',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.red.shade400,
-                      ),
-                    ),
-                  ],
+          const SizedBox(height: 8),
+          
+          // Book Descriptive Information Metadata
+          Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+              color: AppTheme.inkEspresso,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            storyType,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+              color: baseColor,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '$wordCount words',
+                style: TextStyle(
+                  fontSize: 9,
+                  color: AppTheme.inkUmber.withValues(alpha: 0.5),
                 ),
               ),
-            ),
+              if (formattedDate.isNotEmpty)
+                Text(
+                  formattedDate,
+                  style: TextStyle(
+                    fontSize: 9,
+                    color: AppTheme.inkUmber.withValues(alpha: 0.5),
+                  ),
+                ),
+            ],
           ),
         ],
       ),
-    ],
-  );
-}
+    );
+  }
+
+  Color _getRefinedPastelColor(String genre) {
+    // Exactly mapping the soft, artistic cover palettes used in the library view
+    switch (genre.toLowerCase()) {
+      case 'romance':
+        return const Color(0xFFF3D1D1); // Soft Valentine Rose
+      case 'mystery':
+      case 'detective':
+        return const Color(0xFFD5D6EA); // Periwinkle Lavender Blue
+      case 'fantasy':
+      case 'adventure':
+        return const Color(0xFFD1E7DD); // Soft Sage Mint Green
+      default:
+        return const Color(0xFFEFE5D8); // Warm Oatmeal Cream Dust
+    }
+  }
 }

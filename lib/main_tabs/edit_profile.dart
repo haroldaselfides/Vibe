@@ -18,6 +18,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late TextEditingController _bioController;
   late TextEditingController _photoUrlController;
   bool _isLoading = false;
+  late bool _isPublic;
 
   @override
   void initState() {
@@ -26,6 +27,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _usernameController = TextEditingController(text: widget.userData['username']);
     _bioController = TextEditingController(text: widget.userData['bio']);
     _photoUrlController = TextEditingController(text: widget.userData['photoUrl']);
+    _isPublic = widget.userData['isPublic'] ?? true;
   }
 
   @override
@@ -49,6 +51,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         'username': _usernameController.text.trim(),
         'bio': _bioController.text.trim(),
         'photoUrl': _photoUrlController.text.trim(),
+        'isPublic': _isPublic,
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
@@ -115,6 +118,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             const SizedBox(height: 20),
             _buildFieldLabel('Profile Image URL'),
             _buildTextField(_photoUrlController, 'Link to your profile picture'),
+            const SizedBox(height: 24),
+            _buildProfileVisibilityToggle(),
           ],
         ),
       ),
@@ -155,6 +160,54 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppTheme.inkTerracotta, width: 1.5),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileVisibilityToggle() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.inkCanvas.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.inkUmber.withValues(alpha: 0.1)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Profile Visibility',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.inkEspresso,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _isPublic ? 'Public - Anyone can view your profile' : 'Private - Only you can see your profile',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.inkUmber.withValues(alpha: 0.7),
+                  ),
+                ),
+              ],
+            ),
+            Switch(
+              value: _isPublic,
+              onChanged: (value) {
+                setState(() => _isPublic = value);
+              },
+              activeColor: AppTheme.inkTerracotta,
+              inactiveThumbColor: AppTheme.inkUmber,
+              inactiveTrackColor: AppTheme.inkUmber.withValues(alpha: 0.2),
+            ),
+          ],
         ),
       ),
     );

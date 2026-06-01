@@ -15,7 +15,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = "";
   bool _isSearchingStories = true; // Toggle between Stories and Users
-  Set<String> _savedStoryIds = {};
+  final Set<String> _savedStoryIds = {};
 
   late Stream<QuerySnapshot> _storiesStream;
   late Stream<QuerySnapshot> _usersStream;
@@ -234,7 +234,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
             return Card(
               elevation: 0,
-              color: AppTheme.inkCanvas.withOpacity(0.5),
+              color: AppTheme.inkCanvas.withValues(alpha: 0.5),
               margin: const EdgeInsets.only(bottom: 8),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               child: ListTile(
@@ -270,7 +270,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
           final data = doc.data() as Map<String, dynamic>?;
           final name = (data?['displayName'] as String? ?? "").toLowerCase();
           final username = (data?['username'] as String? ?? "").toLowerCase();
-          return name.contains(_searchQuery) || username.contains(_searchQuery);
+          // Only show public profiles (default to true if not set)
+          final isPublic = (data?['isPublic'] as bool?) ?? true;
+          
+          return isPublic && (name.contains(_searchQuery) || username.contains(_searchQuery));
         }).toList() ?? [];
 
         if (docs.isEmpty) return const Center(child: Text('No writers found'));
@@ -281,6 +284,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
           itemBuilder: (context, index) {
             final data = docs[index].data() as Map<String, dynamic>;
             final photoUrl = data['photoUrl'] as String?;
+            // Default to true if isPublic is not set
             final isPublic = (data['isPublic'] as bool?) ?? true;
 
             return ListTile(
