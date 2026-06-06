@@ -8,7 +8,6 @@ import '../main_tabs/settings/notifications_settings.dart';
 import '../main_tabs/settings/appearance_settings.dart';
 import '../main_tabs/settings/help_center_settings.dart';
 import '../main_tabs/settings/about_settings.dart';
-import '../main_tabs/settings/settings_widgets.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -16,7 +15,6 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final accountSettings = AccountSettings();
-    final supportSettings = SupportSettings();
     final logoutHandler = LogoutHandler();
 
     return Scaffold(

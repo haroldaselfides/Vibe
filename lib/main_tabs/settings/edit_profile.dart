@@ -450,7 +450,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           Switch(
             value: _isPublic,
             onChanged: (value) => setState(() => _isPublic = value),
-            activeColor: Colors.white,
+            activeThumbColor: Colors.white,
             activeTrackColor: AppTheme.inkMaroon,
             inactiveThumbColor: AppTheme.inkGold,
             inactiveTrackColor: AppTheme.inkGold.withValues(alpha: 0.2),

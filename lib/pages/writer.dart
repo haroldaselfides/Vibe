@@ -54,7 +54,7 @@ class WriterProfileScreen extends StatelessWidget {
                             width : 36,
                             height: 36,
                             decoration: BoxDecoration(
-                              color        : Colors.white.withOpacity(0.15),
+                              color        : Colors.white.withValues(alpha: 0.15),
                               borderRadius : BorderRadius.circular(10),
                             ),
                             child: const Icon(
@@ -75,7 +75,7 @@ class WriterProfileScreen extends StatelessWidget {
                         decoration: BoxDecoration(
                           shape : BoxShape.circle,
                           border: Border.all(color: Colors.white, width: 2.5),
-                          color : Colors.white.withOpacity(0.2),
+                          color : Colors.white.withValues(alpha: 0.2),
                         ),
                         child: (photoUrl != null && photoUrl.isNotEmpty)
                             ? ClipOval(
@@ -85,14 +85,14 @@ class WriterProfileScreen extends StatelessWidget {
                                   errorBuilder: (_, __, ___) => Icon(
                                     Icons.person,
                                     size : 44,
-                                    color: Colors.white.withOpacity(0.8),
+                                    color: Colors.white.withValues(alpha: 0.8),
                                   ),
                                 ),
                               )
                             : Icon(
                                 Icons.person,
                                 size : 44,
-                                color: Colors.white.withOpacity(0.8),
+                                color: Colors.white.withValues(alpha: 0.8),
                               ),
                       ),
 
@@ -115,7 +115,7 @@ class WriterProfileScreen extends StatelessWidget {
                         username.isNotEmpty ? '@$username' : email,
                         textAlign: TextAlign.center,
                         style: AppTypography.bodySm.copyWith(
-                          color: Colors.white.withOpacity(0.75),
+                          color: Colors.white.withValues(alpha: 0.75),
                         ),
                         maxLines : 1,
                         overflow : TextOverflow.ellipsis,
@@ -147,7 +147,7 @@ class WriterProfileScreen extends StatelessWidget {
                           color       : AppTheme.inkBgCard,
                           borderRadius: BorderRadius.circular(16),
                           border      : Border.all(
-                            color: AppTheme.inkMaroon.withOpacity(0.18),
+                            color: AppTheme.inkMaroon.withValues(alpha: 0.18),
                             width: 1.5,
                           ),
                         ),
@@ -158,7 +158,7 @@ class WriterProfileScreen extends StatelessWidget {
                               width : 40,
                               height: 40,
                               decoration: BoxDecoration(
-                                color       : AppTheme.inkMaroon.withOpacity(0.1),
+                                color       : AppTheme.inkMaroon.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: const Icon(
@@ -238,7 +238,7 @@ class WriterProfileScreen extends StatelessWidget {
                             children: [
                               Icon(Icons.auto_stories_outlined,
                                   size : 56,
-                                  color: AppTheme.inkUmber.withOpacity(0.2)),
+                                  color: AppTheme.inkUmber.withValues(alpha: 0.2)),
                               const SizedBox(height: 12),
                               Text(
                                 'No published stories yet',
@@ -325,7 +325,7 @@ class WriterProfileScreen extends StatelessWidget {
             child : Center(
               child: Icon(icon,
                   size : 36,
-                  color: Colors.white.withOpacity(0.55)),
+                  color: Colors.white.withValues(alpha: 0.55)),
             ),
           ),
 
@@ -366,7 +366,7 @@ class WriterProfileScreen extends StatelessWidget {
                   children: [
                     Icon(Icons.description_outlined,
                         size : 11,
-                        color: AppTheme.inkUmber.withOpacity(0.6)),
+                        color: AppTheme.inkUmber.withValues(alpha: 0.6)),
                     const SizedBox(width: 3),
                     Text(
                       '$wordCount words',
@@ -382,7 +382,7 @@ class WriterProfileScreen extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color       : iconColor.withOpacity(0.5),
+                    color       : iconColor.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
@@ -390,14 +390,14 @@ class WriterProfileScreen extends StatelessWidget {
                     children: [
                       Icon(icon,
                           size : 9,
-                          color: AppTheme.inkEspresso.withOpacity(0.7)),
+                          color: AppTheme.inkEspresso.withValues(alpha: 0.7)),
                       const SizedBox(width: 3),
                       Text(
                         genre.isNotEmpty ? genre : 'Fiction',
                         style: AppTypography.caption.copyWith(
                           fontSize  : 9,
                           fontWeight: FontWeight.w600,
-                          color     : AppTheme.inkEspresso.withOpacity(0.8),
+                          color     : AppTheme.inkEspresso.withValues(alpha: 0.8),
                         ),
                       ),
                     ],

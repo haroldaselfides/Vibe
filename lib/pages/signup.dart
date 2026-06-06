@@ -915,8 +915,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop();
-                Navigator.of(context).pushNamed('/login');
+                final navigator = Navigator.of(context);
+                navigator.pop();
+                if (context.mounted) {
+                  navigator.pushNamed('/login');
+                }
               },
               style: TextButton.styleFrom(
                 foregroundColor: AppTheme.inkUmber,
@@ -933,7 +936,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               onPressed: () async {
                 try {
                   await _authService.sendEmailVerification();
-                  if (mounted) {
+                  if (context.mounted) {
                     showDialog(
                       context: context,
                       builder: (BuildContext context) {

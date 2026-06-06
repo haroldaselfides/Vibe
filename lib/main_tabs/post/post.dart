@@ -265,11 +265,13 @@ class _PostScreenState extends State<PostScreen> {
           await doc.reference.delete();
         }
         await storyRef.delete();
-        if (mounted)
+        if (mounted) {
           _showSnack('Story deleted', color: AppTheme.inkMaroon);
+        }
       } catch (e) {
-        if (mounted)
+        if (mounted) {
           _showSnack('Error deleting: $e', color: AppTheme.inkMaroon);
+        }
       }
     }
   }
@@ -382,16 +384,22 @@ class _PostScreenState extends State<PostScreen> {
           _isSaved = true;
           _currentChapterPublished = targetPublishState;
         });
-        _showSnack(
-          targetPublishState
-              ? 'Chapter published successfully!'
-              : 'Draft saved securely!',
-          color: AppTheme.inkSage,
-        );
+        if (targetPublishState) {
+          _showSnack(
+            'Chapter published successfully!',
+            color: AppTheme.inkSage,
+          );
+        } else {
+          _showSnack(
+            'Draft saved securely!',
+            color: AppTheme.inkSage,
+          );
+        }
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         _showSnack('Save failed: $e', color: AppTheme.inkMaroon);
+      }
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }

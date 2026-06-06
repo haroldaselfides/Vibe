@@ -4,7 +4,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../theme/new_app_theme.dart';
 import '../pages/writer.dart'; // adjust path as needed
 import '../theme/app_typography.dart';
-import 'profile.dart';
 
 // Cover art background colors (not in AppTheme, kept local)
 const _coverTeal = Color(0xFFC8DDD8);
@@ -142,8 +141,11 @@ class _ExploreScreenState extends State<ExploreScreen>
 
     final alreadySaved = _savedStoryIds.contains(storyId);
     setState(() {
-      if (alreadySaved) _savedStoryIds.remove(storyId);
-      else              _savedStoryIds.add(storyId);
+      if (alreadySaved) {
+        _savedStoryIds.remove(storyId);
+      } else {
+        _savedStoryIds.add(storyId);
+      }
     });
 
     try {
@@ -247,8 +249,11 @@ class _ExploreScreenState extends State<ExploreScreen>
       }
     } catch (e) {
       setState(() {
-        if (alreadySaved) _savedStoryIds.add(storyId);
-        else              _savedStoryIds.remove(storyId);
+        if (alreadySaved) {
+          _savedStoryIds.add(storyId);
+        } else {
+          _savedStoryIds.remove(storyId);
+        }
       });
       debugPrint('Error toggling library: $e');
     }
@@ -295,7 +300,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                 width      : 44,
                 height     : 44,
                 decoration : BoxDecoration(
-                  color        : Colors.white.withOpacity(0.15),
+                  color        : Colors.white.withValues(alpha: 0.15),
                   borderRadius : BorderRadius.circular(AppTheme.radiusSm),
                 ),
                 child: const Icon(Icons.search,
@@ -471,7 +476,7 @@ class _ExploreScreenState extends State<ExploreScreen>
               children: [
                 Icon(Icons.search_off_outlined,
                     size: 52,
-                    color: AppTheme.inkUmber.withOpacity(0.25)),
+                    color: AppTheme.inkUmber.withValues(alpha: 0.25)),
                 const SizedBox(height: 12),
                 Text('No stories found',
                     style: AppTypography.bodyMd
@@ -663,7 +668,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                                   borderRadius:
                                       BorderRadius.circular(AppTheme.radiusXs)),
                               backgroundColor:
-                                  AppTheme.inkMaroon.withOpacity(0.06),
+                                  AppTheme.inkMaroon.withValues(alpha: 0.06),
                             ),
                           )
                         : ElevatedButton.icon(
@@ -700,13 +705,19 @@ class _ExploreScreenState extends State<ExploreScreen>
   Widget _buildCoverIcon(String genre, int index) {
     final lowerGenre = genre.toLowerCase();
     late final IconData icon;
-    if      (lowerGenre.contains('fantasy') || lowerGenre.contains('magic'))       icon = Icons.auto_awesome;
-    else if (lowerGenre.contains('sci')     || lowerGenre.contains('space'))       icon = Icons.rocket_launch_outlined;
-    else if (lowerGenre.contains('poet')    || lowerGenre.contains('narrative'))   icon = Icons.format_quote_rounded;
-    else if (lowerGenre.contains('post')    || lowerGenre.contains('apocalyptic')) icon = Icons.public_off_outlined;
-    else                                                                            icon = Icons.auto_stories_outlined;
+    if (lowerGenre.contains('fantasy') || lowerGenre.contains('magic')) {
+      icon = Icons.auto_awesome;
+    } else if (lowerGenre.contains('sci') || lowerGenre.contains('space')) {
+      icon = Icons.rocket_launch_outlined;
+    } else if (lowerGenre.contains('poet') || lowerGenre.contains('narrative')) {
+      icon = Icons.format_quote_rounded;
+    } else if (lowerGenre.contains('post') || lowerGenre.contains('apocalyptic')) {
+      icon = Icons.public_off_outlined;
+    } else {
+      icon = Icons.auto_stories_outlined;
+    }
     return Icon(icon,
-        color: AppTheme.inkUmber.withOpacity(0.5), size: 32);
+        color: AppTheme.inkUmber.withValues(alpha: 0.5), size: 32);
   }
 
   Widget _buildStatusBadge(String label) {
@@ -789,7 +800,7 @@ class _ExploreScreenState extends State<ExploreScreen>
               children: [
                 Icon(Icons.person_search_outlined,
                     size: 52,
-                    color: AppTheme.inkUmber.withOpacity(0.25)),
+                    color: AppTheme.inkUmber.withValues(alpha: 0.25)),
                 const SizedBox(height: 12),
                 Text('No writers found',
                     style: AppTypography.bodyMd

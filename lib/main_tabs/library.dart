@@ -19,7 +19,7 @@ class _LibraryScreenState extends State<LibraryScreen>
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   int _selectedTab = 0; // 0 => Recent Reads, 1 => Collection
-  int _refreshKey = 0;
+  final int _refreshKey = 0;
   @override
   void initState() {
     super.initState();
@@ -466,35 +466,6 @@ class _LibraryScreenState extends State<LibraryScreen>
     }
     return results;
   }
-  Future<void> _loadStatisticsByStatus() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-    try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('readingProgress')
-          .get();
-      final docs = snapshot.docs;
-      int totalSaved = docs.length;
-      int completed = docs.where((d) {
-        final status = (d.data() as Map)['status'] ?? 'not_started';
-        return status == 'completed';
-      }).length;
-      int inProgress = docs.where((d) {
-        final status = (d.data() as Map)['status'] ?? 'not_started';
-        return status == 'in_progress';
-      }).length;
-      if (mounted) {
-        setState(() {
-          // Optionally update header stats with local state if needed
-        });
-      }
-      debugPrint('Stats -> saved:$totalSaved inProgress:$inProgress completed:$completed');
-    } catch (e) {
-      debugPrint('Error loading stats: $e');
-    }
-  }
   // ── Open story ────────────────────────────────────────────────────────────
   Future<void> _openStory(Map<String, dynamic> storyData) async {
     final user = FirebaseAuth.instance.currentUser;
@@ -716,7 +687,6 @@ class _LibraryStoryCard extends StatelessWidget {
     final genre = (data['genre'] as String?) ?? 'Fantasy';
     final storyType = (data['storyType'] as String?) ?? '';
     final title = (data['title'] as String?) ?? 'Untitled';
-    final author = (data['authorUsername'] as String?) ?? 'Unknown';
     final cover = _coverColor(genre);
     final percentLabel = '${(_progressValue * 100).round()}%';
     return GestureDetector(
@@ -957,80 +927,6 @@ class _ProgressSection extends StatelessWidget {
         ),
         const SizedBox(height: 10),
       ],
-    );
-  }
-}
-// ── Genre chip ────────────────────────────────────────────────────────────────
-class _GenreChip extends StatelessWidget {
-  final String genre;
-  const _GenreChip({required this.genre});
-  IconData _genreIcon(String g) {
-    switch (g.toLowerCase()) {
-      case 'romance':
-        return Icons.favorite_border;
-      case 'fantasy':
-        return Icons.auto_awesome;
-      case 'mystery':
-        return Icons.search;
-      case 'sci-fi':
-        return Icons.rocket_launch_outlined;
-      case 'horror':
-        return Icons.nightlight_outlined;
-      case 'thriller':
-        return Icons.bolt_outlined;
-      case 'poetry':
-        return Icons.format_quote;
-      case 'drama':
-        return Icons.theater_comedy_outlined;
-      default:
-        return Icons.book_outlined;
-    }
-  }
-  Color _chipColor(String g) {
-    switch (g.toLowerCase()) {
-      case 'romance':
-        return const Color(0xFFF3D1D1);
-      case 'fantasy':
-        return const Color(0xFFD1E7DD);
-      case 'mystery':
-        return const Color(0xFFD5D6EA);
-      case 'sci-fi':
-        return const Color(0xFFD1DCE7);
-      case 'horror':
-        return const Color(0xFFE7D5D5);
-      case 'thriller':
-        return const Color(0xFFE7E2D5);
-      case 'poetry':
-        return const Color(0xFFF0E6D3);
-      default:
-        return AppTheme.inkBgCard;
-    }
-  }
-  @override
-  Widget build(BuildContext context) {
-    final color = _chipColor(genre);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(_genreIcon(genre),
-              size: 10, color: AppTheme.inkEspresso.withValues(alpha: 0.7)),
-          const SizedBox(width: 6),
-          Text(
-            genre,
-            style: GoogleFonts.manrope(
-              fontSize: 9,
-              fontWeight: FontWeight.w700,
-              color: AppTheme.inkEspresso.withValues(alpha: 0.8),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

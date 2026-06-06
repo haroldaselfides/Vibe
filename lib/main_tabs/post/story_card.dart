@@ -28,7 +28,7 @@ class StoryCard extends StatelessWidget {
     
     // Formatting timestamp safely
     String formattedDate = '';
-    if (data['updatedAt'] != null && data['updatedAt'] is dynamic) {
+    if (data['updatedAt'] != null) {
       try {
         final timestamp = data['updatedAt'];
         final dateTime = timestamp.toDate();
