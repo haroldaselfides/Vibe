@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import '../../theme/app_theme.dart';
+import '../../theme/new_app_theme.dart';
+import '../../theme/app_typography.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 
 // ─────────────────────────────────────────────
 //  Shared floating-card input field
 // ─────────────────────────────────────────────
-class _CardTextField extends StatelessWidget {
+class _CardTextField extends StatefulWidget {
   final TextEditingController controller;
   final String hintText;
   final TextStyle style;
@@ -29,32 +30,73 @@ class _CardTextField extends StatelessWidget {
   });
 
   @override
+  State<_CardTextField> createState() => _CardTextFieldState();
+}
+
+class _CardTextFieldState extends State<_CardTextField> {
+  late FocusNode _focusNode;
+  bool _isFocused = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode = FocusNode();
+    _focusNode.addListener(_handleFocusChange);
+  }
+
+  @override
+  void dispose() {
+    _focusNode.removeListener(_handleFocusChange);
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _handleFocusChange() {
+    setState(() {
+      _isFocused = _focusNode.hasFocus;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.inkBgCard,
         borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: _isFocused 
+              ? AppTheme.inkTerracotta.withValues(alpha: 0.5)
+              : AppTheme.inkMaroon.withValues(alpha: 0.1),
+          width: _isFocused ? 2 : 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withAlpha(12),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: AppTheme.inkMaroon.withValues(alpha: 0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
+          if (_isFocused)
+            BoxShadow(
+              color: AppTheme.inkTerracotta.withValues(alpha: 0.15),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
         ],
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: TextField(
-        controller: controller,
-        style: style,
-        textAlign: textAlign,
-        maxLines: maxLines,
-        textInputAction: textInputAction,
-        onChanged: onChanged != null ? (_) => onChanged!() : null,
-        onSubmitted: onSubmitted != null ? (_) => onSubmitted!() : null,
+        focusNode: _focusNode,
+        controller: widget.controller,
+        style: widget.style,
+        textAlign: widget.textAlign,
+        maxLines: widget.maxLines,
+        textInputAction: widget.textInputAction,
+        onChanged: widget.onChanged != null ? (_) => widget.onChanged!() : null,
+        onSubmitted: widget.onSubmitted != null ? (_) => widget.onSubmitted!() : null,
         decoration: InputDecoration(
-          hintText: hintText,
-          hintStyle: hintStyle,
+          hintText: widget.hintText,
+          hintStyle: widget.hintStyle,
           border: InputBorder.none,
           enabledBorder: InputBorder.none,
           focusedBorder: InputBorder.none,
@@ -85,13 +127,17 @@ class _QuillEditorCard extends StatelessWidget {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.inkBgCard,
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: AppTheme.inkMaroon.withValues(alpha: 0.08),
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withAlpha(12),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: AppTheme.inkMaroon.withValues(alpha: 0.1),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -138,16 +184,11 @@ class StandardEditorContent extends StatelessWidget {
         _CardTextField(
           controller: titleController,
           hintText: 'Story title...',
-          style: const TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
+          style: AppTypography.storyTitle.copyWith(
             color: AppTheme.inkEspresso,
-            height: 1.2,
           ),
-          hintStyle: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.inkUmber.withAlpha(76),
+          hintStyle: AppTypography.storyTitle.copyWith(
+            color: AppTheme.inkUmber.withValues(alpha: 0.35),
           ),
           maxLines: null,
           textInputAction: TextInputAction.next,
@@ -204,16 +245,11 @@ class NovelEditorContent extends StatelessWidget {
         _CardTextField(
           controller: titleController,
           hintText: 'Novel title...',
-          style: const TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
+          style: AppTypography.storyTitle.copyWith(
             color: AppTheme.inkEspresso,
-            height: 1.2,
           ),
-          hintStyle: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.inkUmber.withAlpha(76),
+          hintStyle: AppTypography.storyTitle.copyWith(
+            color: AppTheme.inkUmber.withValues(alpha: 0.35),
           ),
           maxLines: null,
           textInputAction: TextInputAction.next,
@@ -223,15 +259,13 @@ class NovelEditorContent extends StatelessWidget {
         _CardTextField(
           controller: chapterTitleController,
           hintText: 'Chapter title...',
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w500,
-            color: AppTheme.inkEspresso,
+          style: AppTypography.headingSm.copyWith(
+            color: AppTheme.inkMaroon,
+            fontWeight: FontWeight.w600,
           ),
-          hintStyle: TextStyle(
-            fontSize: 18,
+          hintStyle: AppTypography.headingSm.copyWith(
+            color: AppTheme.inkUmber.withValues(alpha: 0.35),
             fontWeight: FontWeight.w500,
-            color: AppTheme.inkUmber.withAlpha(100),
           ),
           textInputAction: TextInputAction.next,
           onChanged: onChapterTitleChanged,
@@ -282,16 +316,13 @@ class PoetryEditorContent extends StatelessWidget {
           controller: titleController,
           hintText: 'Poem title...',
           textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.inkEspresso,
-            height: 1.2,
+          style: AppTypography.storyTitle.copyWith(
+            color: AppTheme.inkMaroon,
+            fontStyle: FontStyle.italic,
           ),
-          hintStyle: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.inkUmber.withAlpha(76),
+          hintStyle: AppTypography.storyTitle.copyWith(
+            color: AppTheme.inkGold.withValues(alpha: 0.4),
+            fontStyle: FontStyle.italic,
           ),
           maxLines: null,
           textInputAction: TextInputAction.next,

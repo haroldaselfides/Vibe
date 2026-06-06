@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../theme/app_theme.dart';
+import 'package:google_fonts/google_fonts.dart';
+import '../../theme/new_app_theme.dart';
 
 /// Opens the chapters sidebar sliding in from the RIGHT with animation.
 ///
@@ -50,13 +51,11 @@ class EditorChaptersSidebar {
           opacity: fade,
           child: Stack(
             children: [
-              // Tap outside to dismiss
               GestureDetector(
                 onTap: () => Navigator.of(ctx).pop(),
                 behavior: HitTestBehavior.opaque,
                 child: const SizedBox.expand(),
               ),
-              // Sidebar panel
               Align(
                 alignment: Alignment.centerRight,
                 child: SlideTransition(
@@ -77,7 +76,7 @@ class EditorChaptersSidebar {
   }
 }
 
-// ─── Internal widget ─────────────────────────────────────────────────────────
+// ─── Internal widget ──────────────────────────────────────────────────────────
 
 class _EditorChaptersSidebarContent extends StatefulWidget {
   final String storyId;
@@ -101,7 +100,7 @@ class _EditorChaptersSidebarContentState
     extends State<_EditorChaptersSidebarContent> {
   bool _addingChapter = false;
 
-  // ── Helpers ──────────────────────────────────────────────────────────────
+  // ── Helpers ───────────────────────────────────────────────────────────────
 
   String _getChapterLabel(int num, String type) {
     if (type == 'Prologue') return 'Prologue';
@@ -117,9 +116,9 @@ class _EditorChaptersSidebarContentState
 
   Color _typeColor(String type) {
     switch (type) {
-      case 'Prologue': return AppTheme.inkTeal;
-      case 'Epilogue': return AppTheme.inkTerracotta;
-      case 'Chapter':  return AppTheme.inkIndigo;
+      case 'Prologue': return AppTheme.inkSage;
+      case 'Epilogue': return AppTheme.inkGold;
+      case 'Chapter':  return AppTheme.inkMaroon;
       default:         return AppTheme.inkUmber;
     }
   }
@@ -152,16 +151,20 @@ class _EditorChaptersSidebarContentState
       if (mounted) {
         setState(() => _addingChapter = false);
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Could not add chapter: $e'),
-          backgroundColor: AppTheme.inkTerracotta,
+          content: Text(
+            'Could not add chapter: $e',
+            style: GoogleFonts.manrope(fontSize: 13),
+          ),
+          backgroundColor: AppTheme.inkMaroon,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ));
       }
     }
   }
 
-  // ── Build ────────────────────────────────────────────────────────────────
+  // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -174,8 +177,9 @@ class _EditorChaptersSidebarContentState
           width: 300,
           height: screenH,
           decoration: const BoxDecoration(
-            color: AppTheme.inkIvory,
-            borderRadius: BorderRadius.horizontal(left: Radius.circular(24)),
+            color: AppTheme.inkBgMain,
+            borderRadius:
+                BorderRadius.horizontal(left: Radius.circular(24)),
             boxShadow: [
               BoxShadow(
                 color: Color(0x33000000),
@@ -197,11 +201,20 @@ class _EditorChaptersSidebarContentState
     );
   }
 
-  // ── Header ───────────────────────────────────────────────────────────────
+  // ── Header ────────────────────────────────────────────────────────────────
 
   Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 12),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 14),
+      decoration: BoxDecoration(
+        color: AppTheme.inkBgMain,
+        border: Border(
+          bottom: BorderSide(
+            color: AppTheme.inkUmber.withValues(alpha: 0.1),
+            width: 1,
+          ),
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -212,20 +225,32 @@ class _EditorChaptersSidebarContentState
                 width: 34,
                 height: 34,
                 decoration: BoxDecoration(
-                  color: AppTheme.inkTerracotta.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(9),
+                  color: AppTheme.inkMaroon.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(Icons.menu_book_rounded,
-                    size: 17, color: AppTheme.inkTerracotta),
+                    size: 17, color: AppTheme.inkMaroon),
               ),
               const SizedBox(width: 10),
-              const Text(
-                'Chapters',
-                style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.inkEspresso,
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Chapters',
+                    style: GoogleFonts.dmSerifDisplay(
+                      fontSize: 18,
+                      color: AppTheme.inkEspresso,
+                      height: 1.1,
+                    ),
+                  ),
+                  Text(
+                    'Tap to switch chapters',
+                    style: GoogleFonts.manrope(
+                      fontSize: 10,
+                      color: AppTheme.inkUmber.withValues(alpha: 0.6),
+                    ),
+                  ),
+                ],
               ),
               const Spacer(),
               GestureDetector(
@@ -234,7 +259,7 @@ class _EditorChaptersSidebarContentState
                   width: 30,
                   height: 30,
                   decoration: BoxDecoration(
-                    color: AppTheme.inkCanvas,
+                    color: AppTheme.inkBgCard,
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(Icons.close,
@@ -243,15 +268,25 @@ class _EditorChaptersSidebarContentState
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           // New chapter button
           GestureDetector(
             onTap: _addingChapter ? null : _handleAddNewChapter,
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 11),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              padding: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(
-                color: AppTheme.inkTerracotta,
-                borderRadius: BorderRadius.circular(12),
+                color: _addingChapter
+                    ? AppTheme.inkMaroon.withValues(alpha: 0.7)
+                    : AppTheme.inkMaroon,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.inkMaroon,
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
               ),
               child: _addingChapter
                   ? const Center(
@@ -267,12 +302,12 @@ class _EditorChaptersSidebarContentState
                     )
                   : Row(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        Icon(Icons.add, size: 16, color: Colors.white),
-                        SizedBox(width: 5),
+                      children: [
+                        const Icon(Icons.add, size: 16, color: Colors.white),
+                        const SizedBox(width: 6),
                         Text(
-                          'New chapter',
-                          style: TextStyle(
+                          'New Chapter',
+                          style: GoogleFonts.manrope(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                             color: Colors.white,
@@ -287,7 +322,7 @@ class _EditorChaptersSidebarContentState
     );
   }
 
-  // ── Chapter list ─────────────────────────────────────────────────────────
+  // ── Chapter list ──────────────────────────────────────────────────────────
 
   Widget _buildChapterList() {
     return Expanded(
@@ -300,15 +335,18 @@ class _EditorChaptersSidebarContentState
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return const Center(
-              child: Text('Error loading chapters',
-                  style: TextStyle(fontSize: 12, color: AppTheme.inkUmber)),
+            return Center(
+              child: Text(
+                'Error loading chapters',
+                style: GoogleFonts.manrope(
+                    fontSize: 12, color: AppTheme.inkUmber),
+              ),
             );
           }
           if (!snapshot.hasData) {
             return const Center(
               child: CircularProgressIndicator(
-                  color: AppTheme.inkTerracotta, strokeWidth: 2),
+                  color: AppTheme.inkMaroon, strokeWidth: 2),
             );
           }
 
@@ -325,7 +363,7 @@ class _EditorChaptersSidebarContentState
                   const SizedBox(height: 10),
                   Text(
                     'No chapters yet',
-                    style: TextStyle(
+                    style: GoogleFonts.manrope(
                       fontSize: 13,
                       color: AppTheme.inkUmber.withValues(alpha: 0.45),
                     ),
@@ -338,25 +376,25 @@ class _EditorChaptersSidebarContentState
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Chapter count divider
+              // Chapter count row
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                 child: Row(
                   children: [
                     Text(
                       '${chapters.length} ${chapters.length == 1 ? 'CHAPTER' : 'CHAPTERS'}',
-                      style: TextStyle(
+                      style: GoogleFonts.manrope(
                         fontSize: 9,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 1.0,
-                        color: AppTheme.inkTerracotta.withValues(alpha: 0.9),
+                        color: AppTheme.inkMaroon.withValues(alpha: 0.9),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Container(
                         height: 1,
-                        color: AppTheme.inkUmber.withValues(alpha: 0.12),
+                        color: AppTheme.inkUmber.withValues(alpha: 0.1),
                       ),
                     ),
                   ],
@@ -367,12 +405,16 @@ class _EditorChaptersSidebarContentState
                   padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
                   itemCount: chapters.length,
                   itemBuilder: (context, index) {
-                    final doc = chapters[index];
+                    final doc  = chapters[index];
                     final data = doc.data() as Map<String, dynamic>;
-                    final chapterNumber = data['chapterNumber'] as int? ?? 0;
-                    final title = data['title'] as String? ?? 'Untitled';
-                    final contentType = data['contentType'] as String? ?? 'Chapter';
-                    final isSelected = chapterNumber == widget.currentChapter;
+                    final chapterNumber =
+                        data['chapterNumber'] as int? ?? 0;
+                    final title =
+                        data['title'] as String? ?? 'Untitled';
+                    final contentType =
+                        data['contentType'] as String? ?? 'Chapter';
+                    final isSelected =
+                        chapterNumber == widget.currentChapter;
 
                     final tColor = _typeColor(contentType);
                     final badge  = _getBadge(chapterNumber, contentType);
@@ -385,17 +427,19 @@ class _EditorChaptersSidebarContentState
                       },
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
-                        margin: const EdgeInsets.only(bottom: 4),
+                        margin: const EdgeInsets.only(bottom: 6),
                         padding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 10),
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? AppTheme.inkTerracotta.withValues(alpha: 0.10)
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(12),
+                              ? AppTheme.inkMaroon
+                                  .withValues(alpha: 0.08)
+                              : AppTheme.inkBgCard,
+                          borderRadius: BorderRadius.circular(14),
                           border: Border.all(
                             color: isSelected
-                                ? AppTheme.inkTerracotta.withValues(alpha: 0.40)
+                                ? AppTheme.inkMaroon
+                                    .withValues(alpha: 0.35)
                                 : Colors.transparent,
                             width: 1.5,
                           ),
@@ -404,18 +448,18 @@ class _EditorChaptersSidebarContentState
                           children: [
                             // Number badge
                             Container(
-                              width: 30,
-                              height: 30,
+                              width: 32,
+                              height: 32,
                               decoration: BoxDecoration(
                                 color: isSelected
-                                    ? AppTheme.inkTerracotta
-                                    : AppTheme.inkCanvas,
-                                borderRadius: BorderRadius.circular(8),
+                                    ? AppTheme.inkMaroon
+                                    : AppTheme.inkBgMain,
+                                borderRadius: BorderRadius.circular(9),
                               ),
                               child: Center(
                                 child: Text(
                                   badge,
-                                  style: TextStyle(
+                                  style: GoogleFonts.manrope(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w700,
                                     color: isSelected
@@ -429,18 +473,19 @@ class _EditorChaptersSidebarContentState
                             // Labels
                             Expanded(
                               child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
                                 children: [
                                   Row(
                                     children: [
                                       Text(
                                         label,
-                                        style: TextStyle(
+                                        style: GoogleFonts.manrope(
                                           fontSize: 10,
                                           fontWeight: FontWeight.w700,
-                                          letterSpacing: 0.2,
+                                          letterSpacing: 0.3,
                                           color: isSelected
-                                              ? AppTheme.inkTerracotta
+                                              ? AppTheme.inkMaroon
                                               : tColor,
                                         ),
                                       ),
@@ -449,13 +494,14 @@ class _EditorChaptersSidebarContentState
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 6, vertical: 1),
                                         decoration: BoxDecoration(
-                                          color: tColor.withValues(alpha: 0.10),
+                                          color: tColor
+                                              .withValues(alpha: 0.10),
                                           borderRadius:
                                               BorderRadius.circular(10),
                                         ),
                                         child: Text(
                                           contentType,
-                                          style: TextStyle(
+                                          style: GoogleFonts.manrope(
                                             fontSize: 8,
                                             fontWeight: FontWeight.w700,
                                             color: tColor,
@@ -464,12 +510,11 @@ class _EditorChaptersSidebarContentState
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 2),
+                                  const SizedBox(height: 3),
                                   Text(
                                     title.isEmpty ? 'Untitled' : title,
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.bold,
+                                    style: GoogleFonts.dmSerifDisplay(
+                                      fontSize: 14,
                                       color: AppTheme.inkEspresso,
                                     ),
                                     maxLines: 1,
@@ -479,13 +524,13 @@ class _EditorChaptersSidebarContentState
                               ),
                             ),
                             const SizedBox(width: 4),
-                            // Edit (selected) or 3-dot menu
+                            // Edit icon (selected) or 3-dot menu
                             if (isSelected)
                               Container(
                                 width: 26,
                                 height: 26,
-                                decoration: BoxDecoration(
-                                  color: AppTheme.inkTerracotta,
+                                decoration: const BoxDecoration(
+                                  color: AppTheme.inkMaroon,
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(Icons.edit,
@@ -519,19 +564,29 @@ class _EditorChaptersSidebarContentState
     );
   }
 
-  // ── Footer ───────────────────────────────────────────────────────────────
+  // ── Footer ────────────────────────────────────────────────────────────────
 
   Widget _buildFooter() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 20),
+      decoration: BoxDecoration(
+        color: AppTheme.inkBgMain,
+        border: Border(
+          top: BorderSide(
+            color: AppTheme.inkUmber.withValues(alpha: 0.08),
+            width: 1,
+          ),
+        ),
+      ),
       child: Row(
         children: [
           Icon(Icons.drag_indicator,
-              size: 14, color: AppTheme.inkUmber.withValues(alpha: 0.3)),
+              size: 14,
+              color: AppTheme.inkUmber.withValues(alpha: 0.3)),
           const SizedBox(width: 5),
           Text(
             'Drag to reorder',
-            style: TextStyle(
+            style: GoogleFonts.manrope(
               fontSize: 11,
               color: AppTheme.inkUmber.withValues(alpha: 0.4),
             ),
@@ -551,21 +606,64 @@ class _EditorChaptersSidebarContentState
       builder: (_) => Container(
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 32),
         decoration: BoxDecoration(
-          color: AppTheme.inkIvory,
+          color: AppTheme.inkBgMain,
           borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 20,
+              offset: const Offset(0, -4),
+            ),
+          ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const SizedBox(height: 8),
+            // Handle
+            Container(
+              width: 36,
+              height: 4,
+              margin: const EdgeInsets.only(top: 12, bottom: 8),
+              decoration: BoxDecoration(
+                color: AppTheme.inkUmber.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            // Chapter title in sheet
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+              child: Text(
+                data['title'] as String? ?? 'Untitled',
+                style: GoogleFonts.dmSerifDisplay(
+                  fontSize: 16,
+                  color: AppTheme.inkEspresso,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Divider(
+                height: 1,
+                color: AppTheme.inkUmber.withValues(alpha: 0.08)),
             ListTile(
-              leading: const Icon(Icons.edit_outlined,
-                  color: AppTheme.inkIndigo),
-              title: const Text('Edit chapter',
-                  style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.inkEspresso,
-                      fontSize: 14)),
+              leading: Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: AppTheme.inkMaroon.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.edit_outlined,
+                    size: 16, color: AppTheme.inkMaroon),
+              ),
+              title: Text(
+                'Edit chapter',
+                style: GoogleFonts.manrope(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  color: AppTheme.inkEspresso,
+                ),
+              ),
               onTap: () {
                 Navigator.pop(context);
                 widget.onChapterSelected(chapterNumber, data);
@@ -576,13 +674,24 @@ class _EditorChaptersSidebarContentState
                 height: 1,
                 color: AppTheme.inkUmber.withValues(alpha: 0.08)),
             ListTile(
-              leading: const Icon(Icons.delete_outline,
-                  color: AppTheme.inkTerracotta),
-              title: const Text('Delete chapter',
-                  style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.inkTerracotta,
-                      fontSize: 14)),
+              leading: Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: AppTheme.inkMaroon.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.delete_outline,
+                    size: 16, color: AppTheme.inkMaroon),
+              ),
+              title: Text(
+                'Delete chapter',
+                style: GoogleFonts.manrope(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  color: AppTheme.inkMaroon,
+                ),
+              ),
               onTap: () => Navigator.pop(context),
             ),
             const SizedBox(height: 8),

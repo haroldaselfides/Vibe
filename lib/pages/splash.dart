@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
+import '../theme/new_app_theme.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -53,7 +53,7 @@ class _SplashScreenState extends State<SplashScreen>
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
-          color: AppTheme.inkBgMain, // aged ivory — matches home.dart
+          color: AppTheme.backgroundColor, // aged ivory — matches home.dart
         ),
         child: Center(
           child: FadeTransition(
@@ -63,35 +63,13 @@ class _SplashScreenState extends State<SplashScreen>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Logo badge — terracotta circle with book icon
-                  Container(
-                    width: 120,
-                    height: 120,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppTheme.inkTerracotta.withValues(alpha: 0.12),
-                      border: Border.all(
-                        color: AppTheme.inkTerracotta.withValues(alpha: 0.25),
-                        width: 1.5,
-                      ),
-                    ),
-                    child: const Icon(
-                      Icons.auto_stories_rounded,
-                      size: 52,
-                      color: AppTheme.inkTerracotta,
-                    ),
-                  ),
-                  const SizedBox(height: 28),
-
-                  // App logo image
+    
+                // App logo image
                   Image.asset(
-                    'assets/images/vibewrite.png',
-                    height: 50,
-                    fit: BoxFit.contain,
+                    'assets/images/vibe.png',
+                    height: 250,
                   ),
                   const SizedBox(height: 10),
-                  const SizedBox(height: 48),
-
                   // Loading indicator — terracotta tint
                   SizedBox(
                     width: 24,

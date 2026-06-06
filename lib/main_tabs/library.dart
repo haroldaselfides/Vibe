@@ -1,29 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../theme/app_theme.dart';
+import 'package:google_fonts/google_fonts.dart';
+import '../theme/new_app_theme.dart';
+import '../theme/app_typography.dart';
 import 'package:vibewrite_app/story/read_screen.dart';
 import 'package:vibewrite_app/main_tabs/post/post_screen_utils.dart';
 
+
 class LibraryScreen extends StatefulWidget {
   const LibraryScreen({super.key});
-
   @override
   State<LibraryScreen> createState() => _LibraryScreenState();
 }
-
 class _LibraryScreenState extends State<LibraryScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = "";
-  int _selectedTab = 0;
-
+  String _searchQuery = '';
+  int _selectedTab = 0; // 0 => Recent Reads, 1 => Collection
+  int _refreshKey = 0;
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-
+    // Recent Reads first: 2 tabs, default index 0 = "Recent Reads"
+    _tabController = TabController(length: 2, vsync: this, initialIndex: 0);
+    _selectedTab = 0;
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) {
         setState(() => _searchQuery = '');
@@ -31,32 +33,29 @@ class _LibraryScreenState extends State<LibraryScreen>
       }
     });
   }
-
   @override
   void dispose() {
     _tabController.dispose();
     _searchController.dispose();
     super.dispose();
   }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Matching the warm, off-white/textured canvas background from the UI mockups
-      backgroundColor: const Color(0xFFF6ECE1), 
+      backgroundColor: AppTheme.surfaceColor,
       body: SafeArea(
         bottom: false,
         child: Column(
           children: [
-            _buildLibraryHeader(),
+            _buildHeader(),
             _buildSearchBar(),
             _buildTabBar(),
             Expanded(
               child: TabBarView(
                 controller: _tabController,
                 children: [
-                  _buildMyCollection(),
-                  _buildRecentReads(),
+                  _buildRecentReads(), // now first
+                  _buildMyCollection(), // now second
                 ],
               ),
             ),
@@ -65,519 +64,499 @@ class _LibraryScreenState extends State<LibraryScreen>
       ),
     );
   }
-
-  Widget _buildLibraryHeader() {
+  // ── Header ────────────────────────────────────────────────────────────────
+  Widget _buildHeader() {
+    final user = FirebaseAuth.instance.currentUser;
     return Container(
-      margin: const EdgeInsets.all(16),
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
+        color: AppTheme.inkMaroon,
         borderRadius: BorderRadius.circular(24),
-        color: AppTheme.inkEspresso,
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFAC5C37).withValues(alpha: 0.3),
+            color: AppTheme.inkMaroon.withValues(alpha: 0.3),
             blurRadius: 12,
             offset: const Offset(0, 6),
-          )
+          ),
         ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Row(
-              children: [
-                const Icon(
-                  Icons.menu_book_rounded,
-                  color: Color(0xFFFDF5E6),
-                  size: 32,
-                ),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      'My Library',
-                      style: TextStyle(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.menu_book_rounded,
+                  color: AppTheme.inkCanvas, size: 28),
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'My Library',
+                     style: AppTypography.headingLg.copyWith(
                         color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Your personal reading shelf',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.8),
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                        fontSize: 26,
+                      )
+                  ),
+                  Text(
+                    'Your personal reading shelf',
+                    style: AppTypography.bodySm.copyWith(
+                    color: Colors.white.withValues(alpha: 0.75),
+                  ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Stats row
+          if (user != null)
+            StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(user.uid)
+                  .collection('library')
+                  .snapshots(),
+              builder: (context, snap) {
+                final count = snap.data?.docs.length ?? 0;
+                return StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(user.uid)
+                      .collection('readingProgress')
+                      .snapshots(),
+                  builder: (context, progSnap) {
+                    final inProgress = (progSnap.data?.docs ?? []).where((d) {
+                      final data = d.data() as Map<String, dynamic>;
+                      final status =
+                          (data['status'] as String?) ?? 'not_started';
+                      return status == 'in_progress';
+                    }).length;
+                    final completed = (progSnap.data?.docs ?? []).where((d) {
+                      final data = d.data() as Map<String, dynamic>;
+                      final status =
+                          (data['status'] as String?) ?? 'not_started';
+                      return status == 'completed';
+                    }).length;
+                    return Row(
+                      children: [
+                        _statChip(Icons.bookmark_outlined, '$count', 'Saved'),
+                        const SizedBox(width: 10),
+                        _statChip(Icons.auto_stories_outlined, '$inProgress',
+                            'In Progress'),
+                        const SizedBox(width: 10),
+                        _statChip(
+                            Icons.check_circle_outline, '$completed', 'Completed'),
+                      ],
+                    );
+                  },
+                );
+              },
             ),
-            _buildStoryCountDisplay(),
-          ],
-        ),
+        ],
       ),
     );
   }
-
-  Widget _buildStoryCountDisplay() {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return const SizedBox.shrink();
-
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('library')
-          .snapshots(),
-      builder: (context, snapshot) {
-        final count = snapshot.data?.docs.length ?? 0;
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
+  Widget _statChip(IconData icon, String value, String label) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
           children: [
+            Icon(icon, color: AppTheme.inkGold, size: 18),
+            const SizedBox(width: 8),
             Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '$count',
-                  style: const TextStyle(
+                  value,
+                  style: GoogleFonts.dmSerifDisplay(
+                    fontSize: 20,
                     color: Colors.white,
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
                     height: 1.1,
                   ),
                 ),
                 Text(
-                  'Stories',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.8),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                Text(
-                  'Collected',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.8),
-                    fontSize: 11,
+                  label,
+                  style: GoogleFonts.manrope(
+                    fontSize: 10,
+                    color: Colors.white.withValues(alpha: 0.7),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
             ),
-            const SizedBox(width: 10),
-            _buildBookStackIcon(),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildBookStackIcon() {
-    return SizedBox(
-      width: 32,
-      height: 38,
-      child: Stack(
-        alignment: Alignment.bottomCenter,
-        children: [
-          _spineLayer(bottomOffset: 0, width: 30, height: 7, color: const Color(0xFFEEDC82)),
-          _spineLayer(bottomOffset: 5, width: 28, height: 7, color: const Color(0xFFDEB887)),
-          _spineLayer(bottomOffset: 10, width: 29, height: 7, color: const Color(0xFFF4A460)),
-          _spineLayer(bottomOffset: 15, width: 26, height: 7, color: const Color(0xFFFFF8DC)),
-        ],
-      ),
-    );
-  }
-
-  Widget _spineLayer({
-    required double bottomOffset, 
-    required double width, 
-    required double height, 
-    required Color color
-  }) {
-    return Positioned(
-      bottom: bottomOffset,
-      child: Container(
-        width: width,
-        height: height,
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(1.5),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.15),
-              blurRadius: 1,
-              offset: const Offset(0, 1),
-            )
           ],
         ),
       ),
     );
   }
-
+  // ── Search bar ────────────────────────────────────────────────────────────
   Widget _buildSearchBar() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
       child: TextField(
         controller: _searchController,
         onChanged: (val) => setState(() => _searchQuery = val.toLowerCase()),
         decoration: InputDecoration(
           filled: true,
-          fillColor: const Color(0xFFEFE4D6),
+          fillColor: AppTheme.inkBgCard,
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(20),
-            borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.05), width: 1),
+            borderSide:
+                BorderSide(color: Colors.black.withValues(alpha: 0.05), width: 1),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(20),
-            borderSide: const BorderSide(color: Color(0xFFC87A53), width: 1.5),
+            borderSide: const BorderSide(color: AppTheme.inkMaroon, width: 1.5),
           ),
           hintText: 'Search library...',
-          hintStyle: TextStyle(
-            color: AppTheme.inkUmber.withValues(alpha: 0.5),
+          hintStyle: GoogleFonts.manrope(
             fontSize: 14,
+            color: AppTheme.inkUmber.withValues(alpha: 0.5),
           ),
           prefixIcon: Icon(
             Icons.search,
             color: AppTheme.inkUmber.withValues(alpha: 0.7),
             size: 20,
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         ),
-        style: const TextStyle(color: AppTheme.inkEspresso, fontSize: 14),
+        style: GoogleFonts.manrope(fontSize: 14, color: AppTheme.inkEspresso),
       ),
     );
   }
-
+  // ── Tab bar ───────────────────────────────────────────────────────────────
   Widget _buildTabBar() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Container(
         padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
-          color: const Color(0xFFEFE4D6),
+          color: AppTheme.inkBgCard,
           borderRadius: BorderRadius.circular(30),
         ),
         child: Row(
           children: [
-            Expanded(
-              child: _buildTabButton(
-                'Collection',
-                _selectedTab == 0,
-                () {
-                  setState(() => _selectedTab = 0);
-                  _tabController.animateTo(0);
-                },
-              ),
-            ),
-            Expanded(
-              child: _buildTabButton(
-                'Recent Reads',
-                _selectedTab == 1,
-                () {
-                  setState(() => _selectedTab = 1);
-                  _tabController.animateTo(1);
-                },
-              ),
-            ),
+            // Left: Recent Reads (index 0)
+            Expanded(child: _tabBtn('Recent Reads', 0)),
+            // Right: Collection (index 1)
+            Expanded(child: _tabBtn('Collection', 1)),
           ],
         ),
       ),
     );
   }
-
-  Widget _buildTabButton(String label, bool isSelected, VoidCallback onTap) {
+  Widget _tabBtn(String label, int index) {
+    final isSelected = _selectedTab == index;
     return GestureDetector(
-      onTap: onTap,
+      onTap: () {
+        setState(() => _selectedTab = index);
+        _tabController.animateTo(index);
+      },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFC87A53) : Colors.transparent,
+          color: isSelected ? AppTheme.inkMaroon : Colors.transparent,
           borderRadius: BorderRadius.circular(26),
         ),
         child: Text(
           label,
           textAlign: TextAlign.center,
-          style: TextStyle(
-            color: isSelected ? Colors.white : AppTheme.inkUmber,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+          style: GoogleFonts.manrope(
             fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: isSelected ? Colors.white : AppTheme.inkUmber,
           ),
         ),
       ),
     );
   }
-
+  // ── My Collection ─────────────────────────────────────────────────────────
   Widget _buildMyCollection() {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      return const Center(child: Text('Please login to view library'));
+      return Center(
+          child:
+              Text('Please login to view library', style: AppTypography.bodyMd));
     }
-
-    final query = FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .collection('library')
-        .orderBy('savedAt', descending: true);
-
     return StreamBuilder<QuerySnapshot>(
-      key: const ValueKey('library_grid_collection'),
-      stream: query.snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.hasError) return const Center(child: Text('Something went wrong'));
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator(color: Color(0xFFC87A53)));
+      key: const ValueKey('library_collection'),
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('library')
+          .orderBy('savedAt', descending: true)
+          .snapshots(),
+      builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const Center(
+              child: CircularProgressIndicator(color: AppTheme.inkMaroon));
         }
-
-        final savedDocs = snapshot.data?.docs ?? [];
-        if (savedDocs.isEmpty) return _buildEmptyState(isCollection: true);
-
+        final docs = snap.data?.docs ?? [];
+        if (docs.isEmpty) return _buildEmptyState(isCollection: true);
         return FutureBuilder<List<Map<String, dynamic>>>(
-          future: _fetchStoriesFromLibrary(savedDocs),
+          future: _fetchWithProgress(user.uid, docs, fromLibrary: true),
           builder: (context, storySnap) {
             if (storySnap.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator(color: Color(0xFFC87A53)));
+              return const Center(
+                  child: CircularProgressIndicator(color: AppTheme.inkMaroon));
             }
-
             var stories = storySnap.data ?? [];
             if (_searchQuery.isNotEmpty) {
               stories = stories
-                  .where((story) =>
-                      (story['title'] as String? ?? '').toLowerCase().contains(_searchQuery) ||
-                      (story['authorUsername'] as String? ?? '').toLowerCase().contains(_searchQuery))
+                  .where((s) =>
+                      (s['title'] ?? '').toLowerCase().contains(_searchQuery) ||
+                      (s['authorUsername'] ?? '')
+                          .toLowerCase()
+                          .contains(_searchQuery))
                   .toList();
             }
-
             if (stories.isEmpty) return _buildEmptyState(isCollection: true);
-
-            return _buildShelfGrid(stories);
+            return _buildCardGrid(stories, user.uid);
           },
         );
       },
     );
   }
-
+  // ── Recent Reads ──────────────────────────────────────────────────────────
   Widget _buildRecentReads() {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return const Center(child: Text('Please login to view library'));
-
-    final progressQuery = FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .collection('readingProgress')
-        .orderBy('lastOpenedAt', descending: true);
-
+    if (user == null) {
+      return Center(
+          child:
+              Text('Please login to view library', style: AppTypography.bodyMd));
+    }
     return StreamBuilder<QuerySnapshot>(
-      key: const ValueKey('library_grid_recent'),
-      stream: progressQuery.snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.hasError) return const Center(child: Text('Something went wrong'));
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator(color: Color(0xFFC87A53)));
+      key: const ValueKey('library_recent'),
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('readingProgress')
+          .orderBy('lastOpenedAt', descending: true)
+          .snapshots(),
+      builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const Center(
+              child: CircularProgressIndicator(color: AppTheme.inkMaroon));
         }
-
-        final progressDocs = snapshot.data?.docs ?? [];
-        if (progressDocs.isEmpty) return _buildEmptyState(isCollection: false);
-
+        final docs = snap.data?.docs ?? [];
+        if (docs.isEmpty) return _buildEmptyState(isCollection: false);
         return FutureBuilder<List<Map<String, dynamic>>>(
-          future: _fetchStoriesForProgress(progressDocs),
+          key: ValueKey(_refreshKey),
+          future: _fetchWithProgress(user.uid, docs, fromLibrary: false),
           builder: (context, storySnap) {
             if (storySnap.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator(color: Color(0xFFC87A53)));
+              return const Center(
+                  child: CircularProgressIndicator(color: AppTheme.inkMaroon));
             }
-
             var stories = storySnap.data ?? [];
             if (_searchQuery.isNotEmpty) {
               stories = stories
-                  .where((story) =>
-                      (story['title'] as String? ?? '').toLowerCase().contains(_searchQuery) ||
-                      (story['authorUsername'] as String? ?? '').toLowerCase().contains(_searchQuery))
+                  .where((s) =>
+                      (s['title'] ?? '').toLowerCase().contains(_searchQuery) ||
+                      (s['authorUsername'] ?? '')
+                          .toLowerCase()
+                          .contains(_searchQuery))
                   .toList();
             }
-
             if (stories.isEmpty) return _buildEmptyState(isCollection: false);
-
-            return _buildShelfGrid(stories);
+            return _buildCardGrid(stories, user.uid);
           },
         );
       },
     );
   }
-
-  // Visual Architecture Engine drawing row-by-row wooden ledge structures under the books
-  Widget _buildShelfGrid(List<Map<String, dynamic>> stories) {
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      itemCount: (stories.length / 3).ceil(),
-      itemBuilder: (context, rowIndex) {
-        final int startIndex = rowIndex * 3;
-        
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: List.generate(3, (colIndex) {
-                  final itemIndex = startIndex + colIndex;
-                  if (itemIndex >= stories.length) {
-                    return const Expanded(child: SizedBox.shrink());
-                  }
-
-                  final item = stories[itemIndex];
-                  return Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 6),
-                      child: _LibraryBookCard(
-                        data: item,
-                        docId: item['storyId'] as String,
-                        onTap: () => _openStory(item),
-                      ),
-                    ),
-                  );
-                }),
-              ),
-            ),
-            // The Realistic Wood Shelf Render Layer
-            Container(
-              height: 14,
-              margin: const EdgeInsets.only(bottom: 24, top: 2),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(3),
-                gradient: const LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0xFFD2B48C), // Highlighting top wood lip reflection
-                    Color(0xFFB58A55), // Mid wood core
-                    Color(0xFF8B5A2B), // Deep ambient baseline shadow
-                  ],
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.18),
-                    blurRadius: 5,
-                    offset: const Offset(0, 5),
-                  )
-                ],
-              ),
-            ),
-          ],
+  // ── Card grid (2-column) ──────────────────────────────────────────────────
+  Widget _buildCardGrid(List<Map<String, dynamic>> stories, String uid) {
+    return GridView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: 14,
+        crossAxisSpacing: 12,
+        childAspectRatio: 0.80,
+      ),
+      itemCount: stories.length,
+      itemBuilder: (context, i) {
+        final story = stories[i];
+        return _LibraryStoryCard(
+          data: story,
+          onTap: () => _openStory(story),
         );
       },
     );
   }
-
-  Future<List<Map<String, dynamic>>> _fetchStoriesFromLibrary(
-    List<QueryDocumentSnapshot> libraryDocs,
-  ) async {
+  // ── Data fetchers ─────────────────────────────────────────────────────────
+  Future<List<Map<String, dynamic>>> _fetchWithProgress(
+    String uid,
+    List<QueryDocumentSnapshot> docs, {
+    required bool fromLibrary,
+  }) async {
     final results = <Map<String, dynamic>>[];
-    for (final libDoc in libraryDocs) {
-      final storyId = libDoc.id;
-      final libData = libDoc.data() as Map<String, dynamic>;
+    for (final doc in docs) {
+      final storyId = doc.id;
       try {
-        final storyDoc = await FirebaseFirestore.instance.collection('stories').doc(storyId).get();
-        if (storyDoc.exists) {
-          results.add({
-            ...(storyDoc.data() as Map<String, dynamic>),
-            'storyId': storyId,
-          });
+        final storyDoc =
+            await FirebaseFirestore.instance.collection('stories').doc(storyId).get();
+        if (!storyDoc.exists) continue;
+        final storyData = storyDoc.data() as Map<String, dynamic>;
+        final storyType = storyData['storyType'] as String? ?? '';
+        // Fetch reading progress
+        final progressDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .collection('readingProgress')
+            .doc(storyId)
+            .get();
+        int lastChapter = 0;
+        int totalChapters = 0;
+        bool hasRead = false;
+        String status = 'not_started';
+        double progressPercent = 0.0;
+        if (progressDoc.exists) {
+          final p = progressDoc.data() as Map<String, dynamic>;
+          lastChapter = (p['lastChapterNumber'] as int?) ?? 0;
+          totalChapters = (p['totalChapters'] as int?) ?? 0;
+          hasRead = (p['hasRead'] as bool?) ?? false;
+          status = (p['status'] as String?) ?? status;
+          progressPercent =
+              ((p['progressPercent'] as num?)?.toDouble() ?? 0.0).clamp(0.0, 1.0);
+        }
+        // For novels, always get the real published chapter count
+        if (storyType == 'Novel') {
+          try {
+            final countSnap = await FirebaseFirestore.instance
+                .collection('stories')
+                .doc(storyId)
+                .collection('chapters')
+                .where('isPublished', isEqualTo: true)
+                .count()
+                .get();
+            totalChapters = countSnap.count ?? totalChapters;
+          } catch (_) {}
         } else {
-          results.add({...libData, 'storyId': storyId});
+          // Short story / Poetry: always 1 total
+          totalChapters = 1;
+          if (lastChapter < 1) lastChapter = hasRead ? 1 : 0;
         }
-      } catch (e) {
-        results.add({...libData, 'storyId': storyId});
-      }
-    }
-    return results;
-  }
-
-  Future<List<Map<String, dynamic>>> _fetchStoriesForProgress(
-    List<QueryDocumentSnapshot> progressDocs,
-  ) async {
-    final results = <Map<String, dynamic>>[];
-    for (final progressDoc in progressDocs) {
-      final storyId = progressDoc.id;
-      try {
-        final storyDoc = await FirebaseFirestore.instance.collection('stories').doc(storyId).get();
-        if (storyDoc.exists) {
-          results.add({
-            ...(storyDoc.data() as Map<String, dynamic>),
-            'storyId': storyId,
-          });
-        }
+        results.add({
+          ...storyData,
+          'storyId': storyId,
+          'lastChapterNumber': lastChapter,
+          'totalChapters': totalChapters,
+          'hasRead': hasRead,
+          'status': status.isNotEmpty
+              ? status
+              : (hasRead
+                  ? 'completed'
+                  : (lastChapter > 0 ? 'in_progress' : 'not_started')),
+          'progressPercent': progressPercent,
+        });
       } catch (e) {
         debugPrint('Error fetching story $storyId: $e');
       }
     }
     return results;
   }
-
+  Future<void> _loadStatisticsByStatus() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('readingProgress')
+          .get();
+      final docs = snapshot.docs;
+      int totalSaved = docs.length;
+      int completed = docs.where((d) {
+        final status = (d.data() as Map)['status'] ?? 'not_started';
+        return status == 'completed';
+      }).length;
+      int inProgress = docs.where((d) {
+        final status = (d.data() as Map)['status'] ?? 'not_started';
+        return status == 'in_progress';
+      }).length;
+      if (mounted) {
+        setState(() {
+          // Optionally update header stats with local state if needed
+        });
+      }
+      debugPrint('Stats -> saved:$totalSaved inProgress:$inProgress completed:$completed');
+    } catch (e) {
+      debugPrint('Error loading stats: $e');
+    }
+  }
+  // ── Open story ────────────────────────────────────────────────────────────
   Future<void> _openStory(Map<String, dynamic> storyData) async {
     final user = FirebaseAuth.instance.currentUser;
     final storyType = storyData['storyType'] as String? ?? 'Short Story';
     final storyId = storyData['storyId'] as String? ?? '';
-
     if (user != null && storyId.isNotEmpty) {
       _saveLastOpened(storyId);
     }
-
     if (storyType == 'Novel' && storyId.isNotEmpty) {
       try {
-        int chapterToOpen = 1;
-        if (user != null) {
-          final progressDoc = await FirebaseFirestore.instance
-              .collection('users')
-              .doc(user.uid)
-              .collection('readingProgress')
-              .doc(storyId)
-              .get();
-
-          if (progressDoc.exists) {
-            chapterToOpen = progressDoc.data()?['lastChapterNumber'] ?? 1;
-          }
-        }
-
-        final chaptersSnap = await FirebaseFirestore.instance
+        // Prefer lastChapterNumber if exists, otherwise 0 (Prologue) if present
+        int chapterToOpen = storyData['lastChapterNumber'] as int? ?? 0;
+        // Try to open exactly the last seen chapter
+        QuerySnapshot chaptersSnap = await FirebaseFirestore.instance
             .collection('stories')
             .doc(storyId)
             .collection('chapters')
+            .where('isPublished', isEqualTo: true)
             .where('chapterNumber', isEqualTo: chapterToOpen)
             .limit(1)
             .get();
-
+        if (chaptersSnap.docs.isEmpty) {
+          // Try prologue if chapterToOpen wasn't 0
+          if (chapterToOpen != 0) {
+            final proSnap = await FirebaseFirestore.instance
+                .collection('stories')
+                .doc(storyId)
+                .collection('chapters')
+                .where('isPublished', isEqualTo: true)
+                .where('chapterNumber', isEqualTo: 0)
+                .limit(1)
+                .get();
+            if (proSnap.docs.isNotEmpty) {
+              chaptersSnap = proSnap;
+              chapterToOpen = 0;
+            }
+          }
+        }
         late QuerySnapshot fallbackSnap;
         if (chaptersSnap.docs.isEmpty) {
           fallbackSnap = await FirebaseFirestore.instance
               .collection('stories')
               .doc(storyId)
               .collection('chapters')
+              .where('isPublished', isEqualTo: true)
               .orderBy('chapterNumber')
               .limit(1)
               .get();
         }
-
         final finalSnap = chaptersSnap.docs.isNotEmpty ? chaptersSnap : fallbackSnap;
-
         if (finalSnap.docs.isNotEmpty) {
           final chapterData = finalSnap.docs.first.data() as Map<String, dynamic>;
           final payload = {
             ...storyData,
-            'title': chapterData['title'] ?? chapterData['contentType'] ?? 'Prologue',
+            'title': chapterData['title'] ??
+                chapterData['contentType'] ??
+                (chapterData['chapterNumber'] == 0 ? 'Prologue' : 'Chapter'),
             'body': chapterData['body'] ?? '',
-            'chapterNumber': chapterData['chapterNumber'] ?? 1,
+            'content': chapterData['content'],
+            'chapterNumber': chapterData['chapterNumber'] ?? 0,
             'contentType': chapterData['contentType'] ?? 'Chapter',
           };
-
           if (!mounted) return;
           Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => StoryReadScreen(story: payload)),
@@ -588,20 +567,18 @@ class _LibraryScreenState extends State<LibraryScreen>
         debugPrint('Error loading chapter: $e');
       }
     }
-
+    // Non-novels
     final payload = {
       ...storyData,
       'body': storyData['body'] ?? '',
       'chapterNumber': 1,
       'contentType': storyData['contentType'] ?? 'Chapter',
     };
-
     if (!mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => StoryReadScreen(story: payload)),
     );
   }
-
   static Future<void> _saveLastOpened(String storyId) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -615,182 +592,445 @@ class _LibraryScreenState extends State<LibraryScreen>
             {'lastOpenedAt': FieldValue.serverTimestamp()},
             SetOptions(merge: true),
           );
-    } catch (e) {
-      debugPrint('Error saving lastOpenedAt: $e');
-    }
+    } catch (_) {}
   }
-
+  // ── Empty state ───────────────────────────────────────────────────────────
   Widget _buildEmptyState({required bool isCollection}) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              isCollection ? Icons.bookmark_outline : Icons.auto_stories_outlined,
+              size: 64,
+              color: AppTheme.inkUmber.withValues(alpha: 0.2),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              isCollection ? 'Your collection is empty' : 'No recent reads yet',
+              style: GoogleFonts.dmSerifDisplay(
+                fontSize: 18,
+                color: AppTheme.inkEspresso,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              isCollection
+                  ? 'Save stories from Home to fill it up!'
+                  : 'Open a story to start your reading history!',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.manrope(
+                fontSize: 13,
+                color: AppTheme.inkUmber.withValues(alpha: 0.6),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+// ─── Story card ───────────────────────────────────────────────────────────────
+class _LibraryStoryCard extends StatelessWidget {
+  final Map<String, dynamic> data;
+  final VoidCallback onTap;
+  const _LibraryStoryCard({
+    required this.data,
+    required this.onTap,
+  });
+  // ── Status & Progress Helpers ──────────────────────────────────────────────
+  String get _statusFromDB => (data['status'] as String?) ?? '';
+  int get _lastChapter => (data['lastChapterNumber'] as int?) ?? 0;
+  int get _totalChapters => (data['totalChapters'] as int?) ?? 0;
+  bool get _isNovel => (data['storyType'] as String?) == 'Novel';
+  bool get _hasRead => (data['hasRead'] as bool?) ?? false;
+  double get _progressPercentSmooth =>
+      ((data['progressPercent'] as num?)?.toDouble() ?? _derivedProgressValue)
+          .clamp(0.0, 1.0);
+  bool get _isCompleted {
+    if (_statusFromDB.isNotEmpty) {
+      return _statusFromDB == 'completed';
+    }
+    if (_isNovel) {
+      return _totalChapters > 0 &&
+          _lastChapter >= _totalChapters - 1 &&
+          _progressPercentSmooth >= 0.999;
+    }
+    return _hasRead || _progressPercentSmooth >= 0.999;
+  }
+  bool get _isStarted {
+    if (_statusFromDB.isNotEmpty) {
+      return _statusFromDB == 'in_progress' || _statusFromDB == 'completed';
+    }
+    return _isCompleted || _lastChapter > 0 || _hasRead || _progressPercentSmooth > 0.0;
+  }
+  double get _derivedProgressValue {
+    if (_isNovel) {
+      if (_totalChapters <= 0) return 0.0;
+      return (_lastChapter / _totalChapters).clamp(0.0, 1.0);
+    }
+    return _hasRead ? 1.0 : (_statusFromDB == 'in_progress' ? 0.5 : 0.0);
+  }
+  double get _progressValue => _isCompleted ? 1.0 : _progressPercentSmooth;
+  String get _progressLabel {
+    if (_statusFromDB == 'completed' || _isCompleted) {
+      return 'Completed';
+    }
+    if (_statusFromDB == 'not_started' || _statusFromDB.isEmpty && !_isStarted) {
+      return 'Not started';
+    }
+    if (_isNovel && _totalChapters > 0) {
+      final ch = _lastChapter; // index aligned (0 = prologue)
+      return 'Ch $ch of $_totalChapters';
+    }
+    return 'In Progress';
+  }
+  Color _coverColor(String genre) {
+    switch (genre.toLowerCase()) {
+      case 'romance':
+        return const Color(0xFFF3D1D1);
+      case 'mystery':
+      case 'detective':
+        return const Color(0xFFD5D6EA);
+      case 'fantasy':
+      case 'adventure':
+        return const Color(0xFFD1E7DD);
+      case 'sci-fi':
+        return const Color(0xFFD1DCE7);
+      case 'horror':
+        return const Color(0xFFE7D5D5);
+      case 'thriller':
+        return const Color(0xFFE7E2D5);
+      case 'drama':
+        return const Color(0xFFE7D5E2);
+      case 'poetry':
+        return const Color(0xFFF0E6D3);
+      default:
+        return AppTheme.inkBgCard;
+    }
+  }
+  @override
+  Widget build(BuildContext context) {
+    final genre = (data['genre'] as String?) ?? 'Fantasy';
+    final storyType = (data['storyType'] as String?) ?? '';
+    final title = (data['title'] as String?) ?? 'Untitled';
+    final author = (data['authorUsername'] as String?) ?? 'Unknown';
+    final cover = _coverColor(genre);
+    final percentLabel = '${(_progressValue * 100).round()}%';
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Cover ───────────────────────────────────
+            Stack(
+              children: [
+                Container(
+                  height: 120,
+                  decoration: BoxDecoration(
+                    color: cover,
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(18),
+                    ),
+                  ),
+                  child: Center(
+                    child: Opacity(
+                      opacity: 0.4,
+                      child: Icon(
+                        PostScreenUtils.getGenreIcon(genre),
+                        size: 48,
+                        color: AppTheme.inkEspresso,
+                      ),
+                    ),
+                  ),
+                ),
+                // Status badge (top-left)
+                Positioned(
+                  top: 10,
+                  left: 10,
+                  child: _StatusBadge(
+                    isCompleted: _isCompleted,
+                    isStarted: _isStarted,
+                    statusFromDB: _statusFromDB,
+                  ),
+                ),
+              ],
+            ),
+            // ── Info ─────────────────────────────────────
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Title
+                    Text(
+                      title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.dmSerifDisplay(
+                        fontSize: 14,
+                        color: AppTheme.inkEspresso,
+                        height: 1.25,
+                      ),
+                    ),
+                    const SizedBox(height: 11),
+                    // Type · Genre
+                    Text(
+                      storyType.isNotEmpty && genre.isNotEmpty
+                          ? '$genre · $storyType'
+                          : genre,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.manrope(
+                        fontSize: 10,
+                        color: AppTheme.inkUmber.withValues(alpha: 0.7),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 11),
+                    // Progress bar + label
+                    _ProgressSection(
+                      isCompleted: _isCompleted,
+                      isStarted: _isStarted,
+                      progressValue: _progressValue,
+                      progressLabel: _progressLabel,
+                      rightPercentLabel:
+                          percentLabel, // keep right 100% text like screenshot
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Status badge ──────────────────────────────────────────────────────────────
+class _StatusBadge extends StatelessWidget {
+  final bool isCompleted;
+  final bool isStarted;
+  final String statusFromDB;
+  const _StatusBadge({
+    required this.isCompleted,
+    required this.isStarted,
+    required this.statusFromDB,
+  });
+  @override
+  Widget build(BuildContext context) {
+    final Color bg;
+    final Color dotColor;
+    final String label;
+    if (statusFromDB == 'completed' || isCompleted) {
+      bg = const Color(0xFFE8F5E9);
+      dotColor = const Color(0xFF4CAF50);
+      label = 'Completed';
+    } else if (statusFromDB == 'in_progress' || isStarted) {
+      bg = const Color(0xFFFFF8E1);
+      dotColor = AppTheme.inkGold;
+      label = 'In Progress';
+    } else {
+      bg = AppTheme.inkBgCard;
+      dotColor = AppTheme.inkUmber.withValues(alpha: 0.4);
+      label = 'Unread';
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            isCollection ? Icons.bookmark_outline : Icons.auto_stories_outlined,
-            size: 64,
-            color: AppTheme.inkUmber.withValues(alpha: 0.2),
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              color: dotColor,
+              shape: BoxShape.circle,
+            ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(width: 4),
           Text(
-            isCollection ? 'Your collection is empty' : 'Your shelf is empty',
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.inkEspresso),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            isCollection ? 'Save stories from Home to fill it up!' : 'Open a story to start your reading history!',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 13, color: AppTheme.inkUmber.withValues(alpha: 0.6)),
+            label,
+            style: GoogleFonts.manrope(
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+              color: (statusFromDB == 'completed' || isCompleted)
+                  ? const Color(0xFF388E3C)
+                  : (statusFromDB == 'in_progress' || isStarted)
+                      ? AppTheme.inkUmber
+                      : AppTheme.inkUmber.withValues(alpha: 0.6),
+            ),
           ),
         ],
       ),
     );
   }
 }
-
-class _LibraryBookCard extends StatelessWidget {
-  final Map<String, dynamic> data;
-  final String docId;
-  final VoidCallback onTap;
-
-  const _LibraryBookCard({required this.data, required this.docId, required this.onTap});
-
+// ── Progress section ──────────────────────────────────────────────────────────
+class _ProgressSection extends StatelessWidget {
+  final bool isCompleted;
+  final bool isStarted;
+  final double progressValue;
+  final String progressLabel;
+  final String? rightPercentLabel;
+  const _ProgressSection({
+    required this.isCompleted,
+    required this.isStarted,
+    required this.progressValue,
+    required this.progressLabel,
+    this.rightPercentLabel,
+  });
   @override
   Widget build(BuildContext context) {
-    final genre = data['genre'] ?? 'Fantasy';
-    final color = PostScreenUtils.getGenreTagColor(genre);
-    
-    // Applying pastel colors from mockup
-    final pastelColor = _getRefinedPastelColor(genre);
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          AspectRatio(
-            aspectRatio: 0.76, // Matching structural dimensions of hardbound notebook curves
-            child: Container(
-              decoration: BoxDecoration(
-                color: pastelColor,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(6),
-                  bottomLeft: Radius.circular(6),
-                  topRight: Radius.circular(14),
-                  bottomRight: Radius.circular(14),
+    final Color barColor = isCompleted
+        ? const Color(0xFF4CAF50)
+        : isStarted
+            ? AppTheme.inkMaroon
+            : AppTheme.inkUmber.withValues(alpha: 0.2);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(
+              isCompleted ? Icons.check_circle_outline : Icons.auto_stories_outlined,
+              size: 11,
+              color:
+                  isCompleted ? const Color(0xFF4CAF50) : AppTheme.inkUmber.withValues(alpha: 0.6),
+            ),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Text(
+                progressLabel,
+                style: GoogleFonts.manrope(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: isCompleted
+                      ? const Color(0xFF388E3C)
+                      : AppTheme.inkUmber.withValues(alpha: 0.7),
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.12),
-                    blurRadius: 8,
-                    offset: const Offset(3, 4),
-                  ),
-                  BoxShadow(
-                    color: Colors.white.withValues(alpha: 0.4),
-                    blurRadius: 0,
-                    offset: const Offset(-1, 0), // Subtle paper page stack edge highlight
-                  ),
-                ],
-              ),
-              child: Stack(
-                children: [
-                  // Book Spine Crease Line 
-                  Positioned(
-                    left: 8,
-                    top: 0,
-                    bottom: 0,
-                    child: Container(
-                      width: 1.5,
-                      color: Colors.black.withValues(alpha: 0.06),
-                    ),
-                  ),
-                  // Left Spine Shaded Binding Overlay
-                  Container(
-                    width: 8,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.black.withValues(alpha: 0.08),
-                          Colors.white.withValues(alpha: 0.08),
-                        ],
-                      ),
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(6),
-                        bottomLeft: Radius.circular(6),
-                      ),
-                    ),
-                  ),
-                  // Center Graphic Icon Asset Render
-                  Center(
-                    child: Opacity(
-                      opacity: 0.45,
-                      child: Icon(
-                        PostScreenUtils.getGenreIcon(genre),
-                        size: 36,
-                        color: AppTheme.inkEspresso,
-                      ),
-                    ),
-                  ),
-                ],
+                overflow: TextOverflow.ellipsis,
               ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            data['title'] ?? 'Untitled',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 12,
-              color: AppTheme.inkEspresso,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            data['authorUsername'] ?? 'Unknown Author',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 10,
-              color: AppTheme.inkUmber.withValues(alpha: 0.6),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              const Icon(Icons.favorite, size: 10, color: Color(0xFFC87A53)),
-              const SizedBox(width: 3),
+            if (isCompleted)
+              const Icon(Icons.check, size: 11, color: Color(0xFF4CAF50)),
+            if (!isCompleted && isStarted && rightPercentLabel != null)
               Text(
-                '${data['likes'] ?? 0}',
-                style: const TextStyle(fontSize: 10, color: AppTheme.inkEspresso),
+                rightPercentLabel!,
+                style: GoogleFonts.manrope(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.inkMaroon,
+                ),
               ),
-              const SizedBox(width: 8),
-              Icon(Icons.visibility, size: 10, color: AppTheme.inkUmber.withValues(alpha: 0.6)),
-              const SizedBox(width: 3),
-              Text(
-                '${data['reads'] ?? 0}',
-                style: const TextStyle(fontSize: 10, color: AppTheme.inkEspresso),
-              ),
-            ],
+          ],
+        ),
+        const SizedBox(height: 5),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: progressValue,
+            minHeight: 4,
+            backgroundColor: AppTheme.inkUmber.withValues(alpha: 0.1),
+            valueColor: AlwaysStoppedAnimation<Color>(barColor),
+          ),
+        ),
+        const SizedBox(height: 10),
+      ],
+    );
+  }
+}
+// ── Genre chip ────────────────────────────────────────────────────────────────
+class _GenreChip extends StatelessWidget {
+  final String genre;
+  const _GenreChip({required this.genre});
+  IconData _genreIcon(String g) {
+    switch (g.toLowerCase()) {
+      case 'romance':
+        return Icons.favorite_border;
+      case 'fantasy':
+        return Icons.auto_awesome;
+      case 'mystery':
+        return Icons.search;
+      case 'sci-fi':
+        return Icons.rocket_launch_outlined;
+      case 'horror':
+        return Icons.nightlight_outlined;
+      case 'thriller':
+        return Icons.bolt_outlined;
+      case 'poetry':
+        return Icons.format_quote;
+      case 'drama':
+        return Icons.theater_comedy_outlined;
+      default:
+        return Icons.book_outlined;
+    }
+  }
+  Color _chipColor(String g) {
+    switch (g.toLowerCase()) {
+      case 'romance':
+        return const Color(0xFFF3D1D1);
+      case 'fantasy':
+        return const Color(0xFFD1E7DD);
+      case 'mystery':
+        return const Color(0xFFD5D6EA);
+      case 'sci-fi':
+        return const Color(0xFFD1DCE7);
+      case 'horror':
+        return const Color(0xFFE7D5D5);
+      case 'thriller':
+        return const Color(0xFFE7E2D5);
+      case 'poetry':
+        return const Color(0xFFF0E6D3);
+      default:
+        return AppTheme.inkBgCard;
+    }
+  }
+  @override
+  Widget build(BuildContext context) {
+    final color = _chipColor(genre);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(_genreIcon(genre),
+              size: 10, color: AppTheme.inkEspresso.withValues(alpha: 0.7)),
+          const SizedBox(width: 6),
+          Text(
+            genre,
+            style: GoogleFonts.manrope(
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.inkEspresso.withValues(alpha: 0.8),
+            ),
           ),
         ],
       ),
     );
-  }
-
-  Color _getRefinedPastelColor(String genre) {
-    // Explicitly mapping the gorgeous soft muted palette variants seen in your mockup
-    switch (genre.toLowerCase()) {
-      case 'romance':
-        return const Color(0xFFF3D1D1); // Soft Valentine Rose
-      case 'mystery':
-      case 'detective':
-        return const Color(0xFFD5D6EA); // Periwinkle Blue
-      case 'fantasy':
-      case 'adventure':
-        return const Color(0xFFD1E7DD); // Soft Mint Green
-      default:
-        return const Color(0xFFEFE5D8); // Warm Oatmeal Cream Dust
-    }
   }
 }

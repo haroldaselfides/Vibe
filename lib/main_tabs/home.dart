@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../theme/app_theme.dart';
+import '../theme/new_app_theme.dart';
+import '../theme/app_typography.dart';
 import 'package:vibewrite_app/main_tabs/post/post.dart';
 import 'package:vibewrite_app/story/read_screen.dart';
-import 'package:vibewrite_app/pages/explore.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -21,7 +21,6 @@ class _HomeScreenState extends State<HomeScreen> {
   String _lastName = '';
   bool _isLoadingUserData = true;
 
-  // Tracks which story IDs are already saved to the user's library.
   final Set<String> _savedStoryIds = {};
 
   final List<String> _genres = [
@@ -62,8 +61,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// Loads the set of story IDs already in the user's library so the button
-  /// shows the correct saved/unsaved state without a flicker.
   Future<void> _loadSavedStoryIds() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -83,17 +80,70 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // ── Add / remove from library ──────────────────────────────────────────────
-  // Writes to users/{uid}/library/{storyId} — the same subcollection that
-  // LibraryScreen's "My Collection" tab reads from.
   Future<void> _toggleLibrary(
     String storyId,
     Map<String, dynamic> storyData,
   ) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please log in to save stories')),
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            backgroundColor: AppTheme.surfaceColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            icon: Icon(
+              Icons.login_outlined,
+              color: AppTheme.inkMaroon,
+              size: 48,
+            ),
+            title: Text(
+              'Login Required',
+              style: AppTypography.headingSm.copyWith(
+                color: AppTheme.inkEspresso,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            content: Text(
+              'Please log in to save stories',
+              style: AppTypography.bodyMd.copyWith(
+                color: AppTheme.inkUmber,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(
+                  'Cancel',
+                  style: AppTypography.labelMd.copyWith(
+                    color: AppTheme.inkMaroon,
+                  ),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).pushNamed('/login');
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.inkMaroon,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                ),
+                child: Text(
+                  'Go to Login',
+                  style: AppTypography.labelMd.copyWith(
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
       );
       return;
     }
@@ -106,7 +156,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final alreadySaved = _savedStoryIds.contains(storyId);
 
-    // Optimistic UI update.
     setState(() {
       if (alreadySaved) {
         _savedStoryIds.remove(storyId);
@@ -119,13 +168,49 @@ class _HomeScreenState extends State<HomeScreen> {
       if (alreadySaved) {
         await ref.delete();
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Removed from Library')),
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                backgroundColor: AppTheme.surfaceColor,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                icon: Icon(
+                  Icons.bookmark_outline,
+                  color: AppTheme.inkMaroon,
+                  size: 48,
+                ),
+                title: Text(
+                  'Removed',
+                  style: AppTypography.headingSm.copyWith(
+                    color: AppTheme.inkEspresso,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                content: Text(
+                  'Story removed from Library',
+                  style: AppTypography.bodyMd.copyWith(
+                    color: AppTheme.inkUmber,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: Text(
+                      'OK',
+                      style: AppTypography.labelMd.copyWith(
+                        color: AppTheme.inkMaroon,
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
           );
         }
       } else {
-        // Write all fields the Library screen needs to display the card
-        // and open the story correctly.
         await ref.set({
           'storyId': storyId,
           'title': storyData['title'] ?? '',
@@ -136,20 +221,50 @@ class _HomeScreenState extends State<HomeScreen> {
           'savedAt': FieldValue.serverTimestamp(),
         });
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('Added to Library'),
-              backgroundColor: AppTheme.inkTerracotta,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                backgroundColor: AppTheme.surfaceColor,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                icon: Icon(
+                  Icons.bookmark_rounded,
+                  color: Colors.green,
+                  size: 48,
+                ),
+                title: Text(
+                  'Saved!',
+                  style: AppTypography.headingSm.copyWith(
+                    color: AppTheme.inkEspresso,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                content: Text(
+                  'Story added to Library',
+                  style: AppTypography.bodyMd.copyWith(
+                    color: AppTheme.inkUmber,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: Text(
+                      'OK',
+                      style: AppTypography.labelMd.copyWith(
+                        color: AppTheme.inkMaroon,
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
           );
         }
       }
     } catch (e) {
-      // Roll back optimistic update on error.
       setState(() {
         if (alreadySaved) {
           _savedStoryIds.add(storyId);
@@ -161,12 +276,10 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // ── Open story → also stamps lastOpenedAt → appears in Recent Reads ────────
   Future<void> _openStory(Map<String, dynamic> storyData) async {
     final storyType = storyData['storyType'] as String? ?? 'Short Story';
     final storyId   = storyData['storyId']   as String? ?? '';
 
-    // Stamp open time so the story appears in Library → Recent Reads.
     final user = FirebaseAuth.instance.currentUser;
     if (user != null && storyId.isNotEmpty) {
       _saveLastOpened(user.uid, storyId);
@@ -175,11 +288,12 @@ class _HomeScreenState extends State<HomeScreen> {
     if (storyType == 'Novel' && storyId.isNotEmpty) {
       try {
         final chaptersRef = FirebaseFirestore.instance
-            .collection('stories')
-            .doc(storyId)
-            .collection('chapters')
-            .orderBy('chapterNumber')
-            .limit(1);
+          .collection('stories')
+          .doc(storyId)
+          .collection('chapters')
+          .where('isPublished', isEqualTo: true)
+          .orderBy('chapterNumber')
+          .limit(1);
 
         final snapshot = await chaptersRef.get();
         if (snapshot.docs.isNotEmpty) {
@@ -207,7 +321,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Stamps lastOpenedAt in readingProgress so Recent Reads stays sorted.
   static Future<void> _saveLastOpened(String uid, String storyId) async {
     try {
       await FirebaseFirestore.instance
@@ -257,12 +370,11 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(color: AppTheme.inkBgMain),
+        decoration: const BoxDecoration(color: AppTheme.surfaceColor),
         child: SafeArea(
           child: CustomScrollView(
             slivers: [
               SliverToBoxAdapter(child: _buildHeader()),
-              SliverToBoxAdapter(child: _buildSearchBar()),
               SliverToBoxAdapter(child: _buildFeaturedSection()),
               SliverToBoxAdapter(child: _buildGenreChips()),
               SliverToBoxAdapter(
@@ -283,31 +395,29 @@ class _HomeScreenState extends State<HomeScreen> {
   // ── Header ─────────────────────────────────────────────────────────────────
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+       mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text(
-            'VIBEWRITE',
-            style: TextStyle(
-              fontSize: 20,
-              fontFamily: 'Paytone One',
-              fontWeight: FontWeight.bold,
-              color: AppTheme.inkEspresso,
-            ),
+          Image.asset(
+            'assets/images/vibe_header.png',
+            height: 50,
+            // fit: BoxFit.contain,
           ),
+          // Avatar
           GestureDetector(
-            onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Profile tapped'))),
+            onTap: () {
+              Navigator.of(context).pushNamed('/profile');
+            },
             child: Container(
-              width: 42,
-              height: 42,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
-                color: AppTheme.inkTerracotta,
+                color: AppTheme.inkMaroon,
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: AppTheme.inkTerracotta.withValues(alpha: 0.3),
+                    color: AppTheme.inkMaroon.withValues(alpha: 0.3),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -316,8 +426,8 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Center(
                 child: _isLoadingUserData
                     ? const SizedBox(
-                        width: 20,
-                        height: 20,
+                        width: 30,
+                        height: 30,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
                           valueColor:
@@ -326,10 +436,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       )
                     : Text(
                         _userInitials,
-                        style: const TextStyle(
+                        // labelMd — Manrope 12 bold, white on terracotta
+                        style: AppTypography.labelMd.copyWith(
                           color: Colors.white,
                           fontSize: 14,
-                          fontWeight: FontWeight.bold,
                         ),
                       ),
               ),
@@ -340,110 +450,31 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ── Search Bar ─────────────────────────────────────────────────────────────
-  Widget _buildSearchBar() {
-    return GestureDetector(
-      onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const ExploreScreen()),
-        );
-      },
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        height: 50,
-        decoration: BoxDecoration(
-          color: AppTheme.inkCanvas,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppTheme.inkCanvas, width: 1.5),
-          boxShadow: [
-            BoxShadow(
-              color: AppTheme.inkEspresso.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            const SizedBox(width: 16),
-            const Icon(Icons.search, color: AppTheme.inkUmber, size: 20),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Text(
-                'Search stories, users...',
-                style: TextStyle(color: AppTheme.inkUmber, fontSize: 14),
-              ),
-            ),
-            Container(
-              margin: const EdgeInsets.only(right: 8),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppTheme.inkUmber.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(Icons.tune,
-                  color: AppTheme.inkUmber, size: 18),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ── Featured Section ───────────────────────────────────────────────────────
+  // ── Featured Banner ────────────────────────────────────────────────────────
+  // Place banner.png in assets/images/. The image fills the card; the
+  // dark gradient overlay keeps the text legible over any image content.
   Widget _buildFeaturedSection() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       height: 220,
       child: Stack(
+        fit: StackFit.expand,
         children: [
-          Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              color: AppTheme.inkEspresso,
-              boxShadow: [
-                BoxShadow(
-                  color: AppTheme.inkUmber.withValues(alpha: 0.18),
-                  blurRadius: 16,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: Stack(
-                children: [
-                  Positioned(
-                    top: -30,
-                    right: -30,
-                    child: Container(
-                      width: 120,
-                      height: 120,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppTheme.inkTerracotta
-                            .withValues(alpha: 0.12),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    top: 20,
-                    right: 50,
-                    child: Container(
-                      width: 60,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color:
-                            AppTheme.inkGold.withValues(alpha: 0.10),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+          // ── Banner image ───────────────────────────────────────────────
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+            child: Image.asset(
+              'assets/images/vibe_banner.png',
+              fit: BoxFit.cover,
             ),
           ),
+
+          // ── Dark scrim so text stays readable over any image ───────────
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+          ),
+
+          // ── Text overlay ───────────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.all(24),
             child: Column(
@@ -457,28 +488,30 @@ class _HomeScreenState extends State<HomeScreen> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
-                        color: AppTheme.inkTerracotta
-                            .withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(8),
+                        color: AppTheme.inkMaroon
+                            .withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(
+                            AppTheme.radiusXs),
+                        border: Border.all(
+                          color: AppTheme.inkMaroon
+                              .withValues(alpha: 0.35),
+                          width: 1,
+                        ),
                       ),
-                      child: const Text(
+                      child: Text(
                         'FEATURED',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.inkTerracotta,
-                          letterSpacing: 1.2,
+                        style: AppTypography.labelMd.copyWith(
+                          color: AppTheme.inkIvory,
+                          letterSpacing: 1.4,
                         ),
                       ),
                     ),
                     const SizedBox(height: 12),
-                    const Text(
+                    Text(
                       'Start Your\nWriting Journey',
-                      style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
+                      style: AppTypography.headingLg.copyWith(
                         color: AppTheme.inkIvory,
-                        height: 1.2,
+                        fontSize: 26,
                       ),
                     ),
                   ],
@@ -486,10 +519,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
+                    Text(
                       'Explore new stories',
-                      style: TextStyle(
-                          fontSize: 13, color: AppTheme.inkBgCard),
+                      style: AppTypography.bodyMd.copyWith(
+                        color: AppTheme.inkIvory
+                            .withValues(alpha: 0.85),
+                      ),
                     ),
                     GestureDetector(
                       onTap: () => Navigator.of(context).push(
@@ -500,12 +535,14 @@ class _HomeScreenState extends State<HomeScreen> {
                         width: 40,
                         height: 40,
                         decoration: BoxDecoration(
-                          color: AppTheme.inkTerracotta,
-                          borderRadius: BorderRadius.circular(12),
+                          color: AppTheme.maroon,
+                          borderRadius: BorderRadius.circular(
+                              AppTheme.radiusSm),
+                          boxShadow: AppTheme.softShadow,
                         ),
                         child: const Center(
                           child: Icon(Icons.arrow_forward,
-                              color: Colors.white, size: 18),
+                              color: AppTheme.inkGold, size: 18),
                         ),
                       ),
                     ),
@@ -538,18 +575,18 @@ class _HomeScreenState extends State<HomeScreen> {
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? AppTheme.inkTerracotta
-                    : AppTheme.inkTerracotta.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(20),
+                    ? AppTheme.inkMaroon
+                    : AppTheme.inkMaroon.withValues(alpha: 0.10),
+                borderRadius:
+                    BorderRadius.circular(AppTheme.radiusFull),
               ),
               child: Text(
                 _genres[index],
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
+                // labelMd — Manrope 12 bold
+                style: AppTypography.labelMd.copyWith(
                   color: isSelected
                       ? Colors.white
-                      : AppTheme.inkTerracotta,
+                      : AppTheme.inkMaroon
                 ),
               ),
             ),
@@ -566,11 +603,10 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
+          // headingSm — DM Serif Display 20
           Text(
             title,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+            style: AppTypography.headingSm.copyWith(
               color: AppTheme.inkEspresso,
             ),
           ),
@@ -578,10 +614,9 @@ class _HomeScreenState extends State<HomeScreen> {
             onTap: () {},
             child: Text(
               action,
-              style: const TextStyle(
-                fontSize: 13,
-                color: AppTheme.inkTerracotta,
-                fontWeight: FontWeight.w500,
+              // labelMd — Manrope 12 bold, terracotta
+              style: AppTypography.labelMd.copyWith(
+                color: AppTheme.inkMaroon
               ),
             ),
           ),
@@ -602,7 +637,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: CircularProgressIndicator(
                 strokeWidth: 2,
                 valueColor: AlwaysStoppedAnimation<Color>(
-                    AppTheme.inkTerracotta),
+                    AppTheme.inkMaroon),
               ),
             ),
           );
@@ -616,18 +651,21 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: AppTheme.inkEspresso,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius:
+                    BorderRadius.circular(AppTheme.radiusSm),
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Icon(Icons.error_outline,
-                      color: AppTheme.inkTerracotta, size: 18),
-                  SizedBox(width: 10),
+                  const Icon(Icons.error_outline,
+                      color: AppTheme.inkMaroon, size: 18),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       'Could not load stories. Check Firestore rules.',
-                      style:
-                          TextStyle(fontSize: 13, color: AppTheme.inkUmber),
+                      // bodySm — Manrope 12
+                      style: AppTypography.bodySm.copyWith(
+                        color: AppTheme.inkUmber,
+                      ),
                     ),
                   ),
                 ],
@@ -640,8 +678,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
         if (docs.isEmpty) {
           return Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            padding: const EdgeInsets.symmetric(
+                horizontal: 20, vertical: 24),
             child: Column(
               children: [
                 Icon(Icons.auto_stories_outlined,
@@ -650,17 +688,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 12),
                 Text(
                   'No stories yet.',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
+                  // bodyLg — Manrope 16 medium
+                  style: AppTypography.bodyLg.copyWith(
                     color: AppTheme.inkUmber.withValues(alpha: 0.6),
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'Be the first to write one!',
-                  style: TextStyle(
-                    fontSize: 13,
+                  // bodyMd — Manrope 14
+                  style: AppTypography.bodyMd.copyWith(
                     color: AppTheme.inkUmber.withValues(alpha: 0.45),
                   ),
                 ),
@@ -674,14 +711,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 20, vertical: 10),
                     decoration: BoxDecoration(
-                      color: AppTheme.inkTerracotta,
-                      borderRadius: BorderRadius.circular(20),
+                      color: AppTheme.inkMaroon,
+                      borderRadius:
+                          BorderRadius.circular(AppTheme.radiusFull),
                     ),
-                    child: const Text(
+                    child: Text(
                       'Write a Story',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
+                      // labelMd — Manrope 12 bold, white
+                      style: AppTypography.labelMd.copyWith(
                         color: Colors.white,
                       ),
                     ),
@@ -700,8 +737,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
         if (filtered.isEmpty) {
           return Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            padding: const EdgeInsets.symmetric(
+                horizontal: 20, vertical: 24),
             child: Column(
               children: [
                 Icon(Icons.auto_stories_outlined,
@@ -710,17 +747,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 12),
                 Text(
                   'No $_selectedGenre stories yet.',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
+                  style: AppTypography.bodyLg.copyWith(
                     color: AppTheme.inkUmber.withValues(alpha: 0.6),
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'Be the first to write one!',
-                  style: TextStyle(
-                    fontSize: 13,
+                  style: AppTypography.bodyMd.copyWith(
                     color: AppTheme.inkUmber.withValues(alpha: 0.45),
                   ),
                 ),
@@ -748,13 +782,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ── Story card ─────────────────────────────────────────────────────────────
   Widget _buildStoryCard(Map<String, dynamic> story, String storyId) {
-    final genre     = story['genre']     as String? ?? 'General';
-    final title     = story['title']     as String? ?? 'Untitled';
-    final wordCount = story['wordCount'] as int?    ?? 0;
+    final genre       = story['genre']       as String? ?? 'General';
+    final title       = story['title']       as String? ?? 'Untitled';
+    final wordCount   = story['wordCount']   as int?    ?? 0;
     final storyType   = story['storyType']   as String? ?? 'Short Story';
     final contentType = story['contentType'] as String? ?? '';
-    final tagColor  = _genreTagColor(genre);
-    final isSaved   = _savedStoryIds.contains(storyId);
+    final tagColor    = _genreTagColor(genre);
+    final isSaved     = _savedStoryIds.contains(storyId);
 
     final authorUsername = story['authorUsername'] as String?;
     final authorEmail    = story['authorEmail']    as String? ?? '';
@@ -778,15 +812,9 @@ class _HomeScreenState extends State<HomeScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: AppTheme.inkBgMain,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.inkCanvas, width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.inkEspresso.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: AppTheme.borderColor, width: 1),
+        boxShadow: AppTheme.softShadow,
       ),
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -801,7 +829,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   height: 62,
                   decoration: BoxDecoration(
                     color: tagColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius:
+                        BorderRadius.circular(AppTheme.radiusXs),
                     border: Border.all(
                         color: tagColor.withValues(alpha: 0.2)),
                   ),
@@ -812,68 +841,80 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Story title — headingSm weight, espresso
                       Text(
                         title,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
+                        style: AppTypography.bodyLg.copyWith(
+                          fontWeight: FontWeight.w700,
                           color: AppTheme.inkEspresso,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
+                      // Author handle — authorName (Manrope 13 semi-bold)
                       Text(
                         authorHandle,
-                        style: const TextStyle(
-                            fontSize: 12, color: AppTheme.inkUmber),
+                        style: AppTypography.authorName.copyWith(
+                          color: AppTheme.inkUmber,
+                        ),
                       ),
                       const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: tagColor.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              genre,
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: tagColor,
+                      // ── FIXED: Metadata row with horizontal scroll ───────
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            // Genre tag
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: tagColor.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(
+                                    AppTheme.radiusXs),
+                              ),
+                              child: Text(
+                                genre,
+                                style: AppTypography.labelSm.copyWith(
+                                  color: tagColor,
+                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: AppTheme.inkUmber.withValues(alpha: 0.08),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              contentType.isNotEmpty ? '$storyType · $contentType' : storyType,
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: AppTheme.inkUmber.withValues(alpha: 0.7),
+                            const SizedBox(width: 6),
+                            // Story type tag
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: AppTheme.inkUmber
+                                    .withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(
+                                    AppTheme.radiusXs),
+                              ),
+                              child: Text(
+                                contentType.isNotEmpty
+                                    ? '$storyType · $contentType'
+                                    : storyType,
+                                style: AppTypography.labelSm.copyWith(
+                                  color: AppTheme.inkUmber
+                                      .withValues(alpha: 0.7),
+                                ),
                               ),
                             ),
-                          ),
-
-                          const SizedBox(width: 10),
-                          const Icon(Icons.text_fields_outlined,
-                              size: 12, color: AppTheme.inkUmber),
-                          const SizedBox(width: 3),
-                          Text(
-                            '$wordCount w',
-                            style: const TextStyle(
-                                fontSize: 11, color: AppTheme.inkUmber),
-                          ),
-                          const SizedBox(width: 3),
-                        ],
+                            const SizedBox(width: 10),
+                            const Icon(Icons.text_fields_outlined,
+                                size: 12, color: AppTheme.inkUmber),
+                            const SizedBox(width: 3),
+                            // Word count — bodySm
+                            Text(
+                              '$wordCount w',
+                              style: AppTypography.bodySm.copyWith(
+                                color: AppTheme.inkUmber,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -884,8 +925,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
 
             // ── Add to Library button ─────────────────────────────────────
-            // Tap → saves to users/{uid}/library → shows in Library > My Collection.
-            // Opening the story → stamps lastOpenedAt → shows in Library > Recent Reads.
             const SizedBox(height: 12),
             GestureDetector(
               onTap: () => _toggleLibrary(storyId, story),
@@ -895,13 +934,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 9),
                 decoration: BoxDecoration(
                   color: isSaved
-                      ? AppTheme.inkTerracotta.withValues(alpha: 0.12)
-                      : AppTheme.inkTerracotta,
-                  borderRadius: BorderRadius.circular(10),
+                      ? AppTheme.inkMaroon.withValues(alpha: 0.12)
+                      : AppTheme.inkMaroon,
+                  borderRadius:
+                      BorderRadius.circular(AppTheme.radiusXs),
                   border: isSaved
                       ? Border.all(
-                          color:
-                              AppTheme.inkTerracotta.withValues(alpha: 0.4),
+                          color: AppTheme.inkMaroon
+                              .withValues(alpha: 0.4),
                           width: 1,
                         )
                       : null,
@@ -915,17 +955,16 @@ class _HomeScreenState extends State<HomeScreen> {
                           : Icons.bookmark_add_outlined,
                       size: 15,
                       color: isSaved
-                          ? AppTheme.inkTerracotta
+                          ? AppTheme.inkMaroon
                           : Colors.white,
                     ),
                     const SizedBox(width: 6),
                     Text(
                       isSaved ? 'Saved to Library' : 'Add to Library',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                      // labelMd — Manrope 12 bold
+                      style: AppTypography.labelMd.copyWith(
                         color: isSaved
-                            ? AppTheme.inkTerracotta
+                            ? AppTheme.inkMaroon
                             : Colors.white,
                       ),
                     ),

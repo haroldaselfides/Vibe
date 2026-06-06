@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
+import '../theme/new_app_theme.dart';
+import '../theme/app_typography.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -48,7 +49,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
-          color: AppTheme.inkBgMain, // aged ivory — same as home
+          color: AppTheme.backgroundColor, // aged ivory — same as home
         ),
         child: SafeArea(
           child: Column(
@@ -67,7 +68,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 40.0),
                           child: Image.asset(
-                            'assets/images/vibewrite.png',
+                            'assets/images/vibe.png',
                             fit: BoxFit.contain,
                             height: 300,
                             errorBuilder: (_, __, ___) => Column(
@@ -82,7 +83,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                         fontFamily: 'Paytone One',
                                         fontSize: 48,
                                         fontWeight: FontWeight.bold,
-                                        color: AppTheme.inkTerracotta,
+                                        color: AppTheme.maroon, // or inkTerracotta, inkGold, etc.
                                       ),
                                     ),
                                     const Text(
@@ -126,7 +127,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                   child: Container(
                     width: double.infinity,
                     decoration: BoxDecoration(
-                      color: AppTheme.inkCanvas, // warm canvas — matches home card surfaces
+                      color: AppTheme.surfaceColor, // warm canvas — matches home card surfaces
                       borderRadius: const BorderRadius.only(
                         topLeft: Radius.circular(36),
                         topRight: Radius.circular(36),
@@ -159,33 +160,22 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                           ),
                         ),
 
-                        const Text(
+                        Text(
                           'Welcome!',
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.inkEspresso,
-                          ),
+                          style: AppTypography.headingLg,
+
                         ),
                         const SizedBox(height: 10),
-                        const Text(
+                        Text(
                           'Ready to share your vibe?',
-                          style: TextStyle(
-                            fontSize: 15,
-                            color: AppTheme.inkEspresso,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: AppTypography.headingSm,
                         ),
                         const SizedBox(height: 6),
                         Text(
                           'Meet new readers, share your stories.'
                           '\nJoin the community — it\'s free.',
                           textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: AppTheme.inkUmber.withValues(alpha: 0.7),
-                            height: 1.6,
-                          ),
+                          style: AppTypography.bodyMd,
                         ),
                         const SizedBox(height: 32),
 
@@ -198,9 +188,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                               Navigator.of(context).pushNamed('/signup');
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: AppTheme.inkTerracotta,
+                              backgroundColor: AppTheme.maroon,
                               foregroundColor: Colors.white,
-                              shadowColor: AppTheme.inkTerracotta.withValues(alpha: 0.3),
+                              shadowColor: AppTheme.inkMaroon.withValues(alpha: 0.3),
                               elevation: 6,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(30),
@@ -253,10 +243,10 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                   ),
                 ),
               ),
-            ],
+              ],
+            ),
           ),
         ),
-      ),
-    );
+      );
   }
 }

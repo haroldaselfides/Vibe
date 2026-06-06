@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
+import '../theme/new_app_theme.dart';
+import '../theme/app_typography.dart';
 import '../widgets/background_shape.dart';
 import '../widgets/social_login_buttons.dart';
 import '../services/auth_service.dart';
@@ -59,7 +60,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         ),
         child: Stack(
           children: [
-            const BackgroundShape(),
+            const BookBackgroundShape(),
             SafeArea(
               child: Stack(
                 children: [
@@ -75,13 +76,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       SliverToBoxAdapter(
                         child: Container(
                           decoration: const BoxDecoration(
-                            color: AppTheme.inkBgMain, // aged ivory
+                            color: AppTheme.surfaceColor, // aged ivory
                             borderRadius: BorderRadius.only(
                               topLeft: Radius.circular(36),
                               topRight: Radius.circular(36),
                             ),
                           ),
-                          padding: const EdgeInsets.fromLTRB(28, 32, 28, 40),
+                          padding:
+                              const EdgeInsets.fromLTRB(28, 32, 28, 40),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -90,31 +92,34 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                 child: Container(
                                   width: 36,
                                   height: 4,
-                                  margin: const EdgeInsets.only(bottom: 24),
+                                  margin:
+                                      const EdgeInsets.only(bottom: 24),
                                   decoration: BoxDecoration(
                                     color: AppTheme.inkUmber
                                         .withValues(alpha: 0.2),
-                                    borderRadius: BorderRadius.circular(2),
+                                    borderRadius:
+                                        BorderRadius.circular(2),
                                   ),
                                 ),
                               ),
 
-                              const Center(
+                              // Header — DM Serif Display 30
+                              Center(
                                 child: Text(
                                   'Create Account',
-                                  style: TextStyle(
-                                    fontSize: 26,
-                                    fontWeight: FontWeight.bold,
+                                  style: AppTypography.headingLg.copyWith(
                                     color: AppTheme.inkEspresso,
                                   ),
+                                  textAlign: TextAlign.center,
                                 ),
                               ),
                               const SizedBox(height: 4),
-                              const Center(
+
+                              // Sub-header — Manrope 14
+                              Center(
                                 child: Text(
                                   'Join the community of writers',
-                                  style: TextStyle(
-                                    fontSize: 13,
+                                  style: AppTypography.bodyMd.copyWith(
                                     color: AppTheme.inkUmber,
                                   ),
                                 ),
@@ -126,7 +131,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               const SizedBox(height: 8),
                               _buildTextField(
                                 controller: _firstNameController,
-                                hint: 'Enter your first name  ',
+                                hint: 'Enter your first name',
                                 icon: Icons.person_outline,
                               ),
                               const SizedBox(height: 16),
@@ -148,6 +153,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                 controller: _usernameController,
                                 hint: '@username',
                                 icon: Icons.alternate_email,
+                                iconColor: AppTheme.inkMaroon, // accent color for username
                               ),
                               const SizedBox(height: 16),
 
@@ -174,7 +180,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               _buildConfirmPasswordField(),
                               const SizedBox(height: 16),
 
-                              // Terms checkbox — uses inkTerracotta for active state
+                              // Terms checkbox
                               Row(
                                 children: [
                                   SizedBox(
@@ -197,19 +203,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: RichText(
-                                      text: const TextSpan(
+                                      text: TextSpan(
                                         text: 'Agree To ',
-                                        style: TextStyle(
-                                          fontSize: 12,
+                                        // bodySm — Manrope 12
+                                        style: AppTypography.bodySm
+                                            .copyWith(
                                           color: AppTheme.inkUmber,
                                         ),
                                         children: [
                                           TextSpan(
                                             text: 'Terms & Privacy',
-                                            style: TextStyle(
-                                              fontSize: 12,
+                                            style: AppTypography.bodySm
+                                                .copyWith(
                                               fontWeight: FontWeight.bold,
-                                              color: AppTheme.inkTerracotta,
+                                              color:
+                                                  AppTheme.inkTerracotta,
                                             ),
                                           ),
                                         ],
@@ -228,7 +236,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                   onPressed:
                                       _isLoading ? null : _handleSignUp,
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppTheme.inkTerracotta,
+                                    backgroundColor:
+                                        AppTheme.inkMaroon, // or inkTerracotta for more pop
                                     foregroundColor: Colors.white,
                                     shadowColor: Colors.transparent,
                                     elevation: 0,
@@ -248,9 +257,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                                     Color>(Colors.white),
                                           ),
                                         )
-                                      : const Text(
+                                      : Text(
                                           'Sign Up',
-                                          style: TextStyle(
+                                          style: AppTypography.bodyLg
+                                              .copyWith(
                                             fontSize: 16,
                                             fontWeight: FontWeight.w600,
                                             color: Colors.white,
@@ -260,7 +270,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               ),
                               const SizedBox(height: 24),
 
-                              // Divider
+                              // Divider — bodySm label
                               Row(
                                 children: [
                                   Expanded(
@@ -274,8 +284,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                         horizontal: 8.0),
                                     child: Text(
                                       'or continue with',
-                                      style: TextStyle(
-                                        fontSize: 11,
+                                      style: AppTypography.bodySm.copyWith(
                                         color: AppTheme.inkUmber
                                             .withValues(alpha: 0.8),
                                       ),
@@ -305,7 +314,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               ),
                               const SizedBox(height: 24),
 
-                              // Login link
+                              // Login link — bodyMd + inkTerracotta accent
                               Center(
                                 child: GestureDetector(
                                   onTap: () => Navigator.of(context)
@@ -313,16 +322,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                   child: RichText(
                                     text: TextSpan(
                                       text: 'Already have an account? ',
-                                      style: TextStyle(
-                                        fontSize: 13,
+                                      style: AppTypography.bodyMd.copyWith(
                                         color: AppTheme.inkUmber
                                             .withValues(alpha: 0.8),
                                       ),
-                                      children: const [
+                                      children: [
                                         TextSpan(
                                           text: 'Log in',
-                                          style: TextStyle(
-                                            fontSize: 13,
+                                          style:
+                                              AppTypography.bodyMd.copyWith(
                                             color: AppTheme.inkTerracotta,
                                             fontWeight: FontWeight.bold,
                                           ),
@@ -339,12 +347,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
                       SliverFillRemaining(
                         hasScrollBody: false,
-                        child: Container(color: AppTheme.inkBgMain),
+                        child: Container(color: AppTheme.backgroundColor), // Fill remaining space with background color
                       ),
                     ],
                   ),
 
-                  // Back button — light on dark header
+                  // Back button
                   Positioned(
                     top: 8,
                     left: 16,
@@ -378,13 +386,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
+  // labelMd — Manrope 12 bold
   Widget _buildLabel(String text) {
     return Text(
       text,
-      style: const TextStyle(
-        fontSize: 14,
-        fontWeight: FontWeight.w600,
+      style: AppTypography.labelMd.copyWith(
         color: AppTheme.inkEspresso,
+        letterSpacing: 0.4,
       ),
     );
   }
@@ -393,23 +401,29 @@ class _SignUpScreenState extends State<SignUpScreen> {
     required TextEditingController controller,
     required String hint,
     required IconData icon,
+    Color? iconColor,
     TextInputType keyboardType = TextInputType.text,
   }) {
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
+      // Input text — bodyMd (Manrope 14)
+      style: AppTypography.bodyMd.copyWith(color: AppTheme.inkEspresso),
       decoration: InputDecoration(
         hintText: hint,
-        prefixIcon: Icon(icon, color: AppTheme.inkUmber, size: 20),
+        hintStyle: AppTypography.bodyMd.copyWith(
+          color: AppTheme.inkUmber.withValues(alpha: 0.5),
+        ),
+        prefixIcon: Icon(icon, color: iconColor ?? AppTheme.inkMaroon, size: 20),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-              color: AppTheme.inkUmber.withValues(alpha: 0.3)),
+          borderSide:
+              BorderSide(color: AppTheme.inkMaroon.withValues(alpha: 0.3)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-              color: AppTheme.inkUmber.withValues(alpha: 0.3)),
+          borderSide:
+              BorderSide(color: AppTheme.inkMaroon.withValues(alpha: 0.3)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -417,8 +431,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               const BorderSide(color: AppTheme.inkTerracotta, width: 2),
         ),
         filled: true,
-        fillColor: AppTheme.inkCanvas, // warm canvas fill
-        hintStyle: const TextStyle(color: AppTheme.inkUmber, fontSize: 14),
+        fillColor: AppTheme.inkCanvas,
       ),
     );
   }
@@ -427,10 +440,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
     return TextField(
       controller: _passwordController,
       obscureText: _obscurePassword,
+      style: AppTypography.bodyMd.copyWith(color: AppTheme.inkEspresso),
       decoration: InputDecoration(
         hintText: 'Enter your password',
+        hintStyle: AppTypography.bodyMd.copyWith(
+          color: AppTheme.inkUmber.withValues(alpha: 0.5),
+        ),
         prefixIcon: const Icon(Icons.lock_outline,
-            color: AppTheme.inkUmber, size: 20),
+            color: AppTheme.inkMaroon, size: 20),
         suffixIcon: GestureDetector(
           onTap: () =>
               setState(() => _obscurePassword = !_obscurePassword),
@@ -438,19 +455,19 @@ class _SignUpScreenState extends State<SignUpScreen> {
             _obscurePassword
                 ? Icons.visibility_off_outlined
                 : Icons.visibility_outlined,
-            color: AppTheme.inkUmber,
+            color: AppTheme.inkMaroon,
             size: 20,
           ),
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-              color: AppTheme.inkUmber.withValues(alpha: 0.3)),
+          borderSide:
+              BorderSide(color: AppTheme.inkMaroon.withValues(alpha: 0.3)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-              color: AppTheme.inkUmber.withValues(alpha: 0.3)),
+          borderSide:
+              BorderSide(color: AppTheme.inkMaroon.withValues(alpha: 0.3)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -459,7 +476,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
         ),
         filled: true,
         fillColor: AppTheme.inkCanvas,
-        hintStyle: const TextStyle(color: AppTheme.inkUmber, fontSize: 14),
       ),
     );
   }
@@ -468,10 +484,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
     return TextField(
       controller: _confirmPasswordController,
       obscureText: _obscureConfirmPassword,
+      style: AppTypography.bodyMd.copyWith(color: AppTheme.inkEspresso),
       decoration: InputDecoration(
         hintText: 'Enter your password again',
+        hintStyle: AppTypography.bodyMd.copyWith(
+          color: AppTheme.inkUmber.withValues(alpha: 0.5),
+        ),
         prefixIcon: const Icon(Icons.lock_outline,
-            color: AppTheme.inkUmber, size: 20),
+            color: AppTheme.inkMaroon, size: 20),
         suffixIcon: GestureDetector(
           onTap: () => setState(
               () => _obscureConfirmPassword = !_obscureConfirmPassword),
@@ -479,63 +499,170 @@ class _SignUpScreenState extends State<SignUpScreen> {
             _obscureConfirmPassword
                 ? Icons.visibility_off_outlined
                 : Icons.visibility_outlined,
-            color: AppTheme.inkUmber,
+            color: AppTheme.inkMaroon,
             size: 20,
           ),
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-              color: AppTheme.inkUmber.withValues(alpha: 0.3)),
+          borderSide:
+              BorderSide(color: AppTheme.inkMaroon.withValues(alpha: 0.3)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-              color: AppTheme.inkUmber.withValues(alpha: 0.3)),
+          borderSide:
+              BorderSide(color: AppTheme.inkMaroon.withValues(alpha: 0.3)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide:
-              const BorderSide(color: AppTheme.inkTerracotta, width: 2),
+              const BorderSide(color: AppTheme.inkMaroon, width: 2),
         ),
         filled: true,
         fillColor: AppTheme.inkCanvas,
-        hintStyle: const TextStyle(color: AppTheme.inkUmber, fontSize: 14),
       ),
     );
   }
 
   Future<void> _handleSignUp() async {
+    // Check if agreed to terms
     if (!_agreeToTerms) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please agree to Terms & Privacy'),
-          duration: Duration(seconds: 2),
-        ),
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            backgroundColor: AppTheme.surfaceColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            icon: Icon(
+              Icons.info_outline,
+              color: AppTheme.inkMaroon,
+              size: 48,
+            ),
+            title: Text(
+              'Terms Required',
+              style: AppTypography.headingSm.copyWith(
+                color: AppTheme.inkEspresso,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            content: Text(
+              'Please agree to Terms & Privacy to continue',
+              style: AppTypography.bodyMd.copyWith(
+                color: AppTheme.inkUmber,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(
+                  'OK',
+                  style: AppTypography.labelMd.copyWith(
+                    color: AppTheme.inkMaroon,
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
       );
       return;
     }
 
+    // Check if all fields filled
     if (_firstNameController.text.isEmpty ||
         _lastNameController.text.isEmpty ||
         _usernameController.text.isEmpty ||
         _emailController.text.isEmpty ||
         _passwordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please fill in all fields'),
-          duration: Duration(seconds: 2),
-        ),
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            backgroundColor: AppTheme.surfaceColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            icon: Icon(
+              Icons.info_outline,
+              color: AppTheme.inkMaroon,
+              size: 48,
+            ),
+            title: Text(
+              'Missing Fields',
+              style: AppTypography.headingSm.copyWith(
+                color: AppTheme.inkEspresso,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            content: Text(
+              'Please fill in all fields',
+              style: AppTypography.bodyMd.copyWith(
+                color: AppTheme.inkUmber,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(
+                  'OK',
+                  style: AppTypography.labelMd.copyWith(
+                    color: AppTheme.inkMaroon,
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
       );
       return;
     }
 
+    // Check if passwords match
     if (_passwordController.text != _confirmPasswordController.text) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Passwords do not match'),
-          duration: Duration(seconds: 2),
-        ),
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            backgroundColor: AppTheme.surfaceColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            icon: Icon(
+              Icons.error_outline,
+              color: Colors.red,
+              size: 48,
+            ),
+            title: Text(
+              'Password Mismatch',
+              style: AppTypography.headingSm.copyWith(
+                color: AppTheme.inkEspresso,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            content: Text(
+              'Passwords do not match',
+              style: AppTypography.bodyMd.copyWith(
+                color: AppTheme.inkUmber,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(
+                  'OK',
+                  style: AppTypography.labelMd.copyWith(
+                    color: AppTheme.inkMaroon,
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
       );
       return;
     }
@@ -555,12 +682,48 @@ class _SignUpScreenState extends State<SignUpScreen> {
           await _authService.sendEmailVerification();
 
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                    'Verification email sent! Please check your inbox.'),
-                duration: Duration(seconds: 3),
-              ),
+            showDialog(
+              context: context,
+              builder: (BuildContext context) {
+                return AlertDialog(
+                  backgroundColor: AppTheme.surfaceColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  icon: Icon(
+                    Icons.mail_outline,
+                    color: AppTheme.inkMaroon,
+                    size: 48,
+                  ),
+                  title: Text(
+                    'Verification Email Sent',
+                    style: AppTypography.headingSm.copyWith(
+                      color: AppTheme.inkEspresso,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  content: Text(
+                    'Please check your inbox for the verification link',
+                    style: AppTypography.bodyMd.copyWith(
+                      color: AppTheme.inkUmber,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      child: Text(
+                        'OK',
+                        style: AppTypography.labelMd.copyWith(
+                          color: AppTheme.inkMaroon,
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
             );
           }
 
@@ -569,26 +732,133 @@ class _SignUpScreenState extends State<SignUpScreen> {
           }
         } else {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                  content:
-                      Text('Account created for ${user.email}!')),
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (BuildContext context) {
+                return AlertDialog(
+                  backgroundColor: AppTheme.surfaceColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  icon: Icon(
+                    Icons.check_circle,
+                    color: Colors.green,
+                    size: 48,
+                  ),
+                  title: Text(
+                    'Account Created!',
+                    style: AppTypography.headingSm.copyWith(
+                      color: AppTheme.inkEspresso,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  content: Text(
+                    'Your account has been created successfully',
+                    style: AppTypography.bodyMd.copyWith(
+                      color: AppTheme.inkUmber,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                );
+              },
             );
-            Navigator.of(context).pushReplacementNamed('/home');
+
+            // Navigate after 2 seconds
+            await Future.delayed(const Duration(seconds: 2));
+            if (mounted) {
+              Navigator.of(context).pop(); // Close dialog
+              Navigator.of(context).pushReplacementNamed('/home');
+            }
           }
         }
       } else {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('Sign up failed. Please try again.')),
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                backgroundColor: AppTheme.surfaceColor,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                icon: Icon(
+                  Icons.error_outline,
+                  color: Colors.red,
+                  size: 48,
+                ),
+                title: Text(
+                  'Sign Up Failed',
+                  style: AppTypography.headingSm.copyWith(
+                    color: AppTheme.inkEspresso,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                content: Text(
+                  'Please try again',
+                  style: AppTypography.bodyMd.copyWith(
+                    color: AppTheme.inkUmber,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: Text(
+                      'OK',
+                      style: AppTypography.labelMd.copyWith(
+                        color: AppTheme.inkMaroon,
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
           );
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Sign up failed: $e')),
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              backgroundColor: AppTheme.surfaceColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              icon: Icon(
+                Icons.warning_amber_rounded,
+                color: Colors.orange,
+                size: 48,
+              ),
+              title: Text(
+                'Error',
+                style: AppTypography.headingSm.copyWith(
+                  color: AppTheme.inkEspresso,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              content: Text(
+                'Sign up failed: $e',
+                style: AppTypography.bodyMd.copyWith(
+                  color: AppTheme.inkUmber,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text(
+                    'OK',
+                    style: AppTypography.labelMd.copyWith(
+                      color: AppTheme.inkMaroon,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
         );
       }
     } finally {
@@ -602,38 +872,43 @@ class _SignUpScreenState extends State<SignUpScreen> {
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          backgroundColor: AppTheme.inkBgMain,
+          backgroundColor: AppTheme.surfaceColor,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          title: const Text(
+          // Dialog title — headingSm (DM Serif Display 20)
+          title: Text(
             'Verify Your Email',
-            style: TextStyle(
+            style: AppTypography.headingSm.copyWith(
               color: AppTheme.inkEspresso,
-              fontWeight: FontWeight.bold,
             ),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              // bodyMd — Manrope 14
+              Text(
                 'We sent a verification link to:',
-                style: TextStyle(fontSize: 14, color: AppTheme.inkUmber),
+                style: AppTypography.bodyMd.copyWith(
+                  color: AppTheme.inkUmber,
+                ),
               ),
               const SizedBox(height: 8),
+              // authorName style fits this perfectly — Manrope 13 semi-bold
               Text(
                 userEmail,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
+                style: AppTypography.authorName.copyWith(
                   color: AppTheme.inkTerracotta,
                 ),
               ),
               const SizedBox(height: 16),
-              const Text(
+              // bodySm — Manrope 12 for supporting copy
+              Text(
                 'Click the link in the email to verify your account. Once verified, you can log in.',
-                style: TextStyle(fontSize: 13, color: AppTheme.inkUmber),
+                style: AppTypography.bodySm.copyWith(
+                  color: AppTheme.inkUmber,
+                ),
               ),
             ],
           ),
@@ -646,23 +921,107 @@ class _SignUpScreenState extends State<SignUpScreen> {
               style: TextButton.styleFrom(
                 foregroundColor: AppTheme.inkUmber,
               ),
-              child: const Text('Go to Login'),
+              // labelMd — Manrope 12 bold
+              child: Text(
+                'Go to Login',
+                style: AppTypography.labelMd.copyWith(
+                  color: AppTheme.inkUmber,
+                ),
+              ),
             ),
             ElevatedButton(
               onPressed: () async {
-                final messenger = ScaffoldMessenger.of(context);
                 try {
                   await _authService.sendEmailVerification();
-                  messenger.showSnackBar(
-                    const SnackBar(
-                      content: Text('Verification email sent again!'),
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
+                  if (mounted) {
+                    showDialog(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return AlertDialog(
+                          backgroundColor: AppTheme.surfaceColor,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          icon: Icon(
+                            Icons.check_circle,
+                            color: Colors.green,
+                            size: 48,
+                          ),
+                          title: Text(
+                            'Email Resent',
+                            style: AppTypography.headingSm.copyWith(
+                              color: AppTheme.inkEspresso,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          content: Text(
+                            'Verification email sent again!',
+                            style: AppTypography.bodyMd.copyWith(
+                              color: AppTheme.inkUmber,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () =>
+                                  Navigator.of(context).pop(),
+                              child: Text(
+                                'OK',
+                                style: AppTypography.labelMd.copyWith(
+                                  color: AppTheme.inkMaroon,
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  }
                 } catch (e) {
-                  messenger.showSnackBar(
-                    SnackBar(content: Text('Error: $e')),
-                  );
+                  if (mounted) {
+                    showDialog(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return AlertDialog(
+                          backgroundColor: AppTheme.surfaceColor,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          icon: Icon(
+                            Icons.error_outline,
+                            color: Colors.red,
+                            size: 48,
+                          ),
+                          title: Text(
+                            'Error',
+                            style: AppTypography.headingSm.copyWith(
+                              color: AppTheme.inkEspresso,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          content: Text(
+                            'Error: $e',
+                            style: AppTypography.bodyMd.copyWith(
+                              color: AppTheme.inkUmber,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () =>
+                                  Navigator.of(context).pop(),
+                              child: Text(
+                                'OK',
+                                style: AppTypography.labelMd.copyWith(
+                                  color: AppTheme.inkMaroon,
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  }
                 }
               },
               style: ElevatedButton.styleFrom(
@@ -673,7 +1032,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   borderRadius: BorderRadius.circular(20),
                 ),
               ),
-              child: const Text('Resend Email'),
+              child: Text(
+                'Resend Email',
+                style: AppTypography.labelMd.copyWith(
+                  color: Colors.white,
+                ),
+              ),
             ),
           ],
         );

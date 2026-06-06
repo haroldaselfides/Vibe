@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../theme/app_theme.dart';
+import 'package:google_fonts/google_fonts.dart';
+import '../theme/new_app_theme.dart';
+import '../theme/app_typography.dart';
 
 class ChaptersListModal extends StatelessWidget {
   final String storyId;
   final int currentChapter;
   final Function(int chapterNumber, Map<String, dynamic> data) onChapterSelected;
   final Function(int chapterNumber) onAddNewChapter;
+  final bool isReadMode;
+  final VoidCallback? onClose; // ← nullable, not required
 
   const ChaptersListModal({
     super.key,
@@ -14,88 +18,100 @@ class ChaptersListModal extends StatelessWidget {
     required this.currentChapter,
     required this.onChapterSelected,
     required this.onAddNewChapter,
+    this.isReadMode = false,
+    this.onClose, // ← optional
   });
+
+  void _close(BuildContext context) {
+    if (onClose != null) {
+      onClose!();
+    } else {
+      Navigator.pop(context);
+    }
+  }
 
   String _getChapterLabel(int chapterNum, String contentType) {
     if (contentType == 'Prologue') return 'Prologue';
     if (contentType == 'Epilogue') return 'Epilogue';
-    return 'Chapter $chapterNum';
+    return 'Ch. $chapterNum';
+  }
+
+  String _getCircleLabel(int chapterNum, String contentType) {
+    if (contentType == 'Prologue') return 'P';
+    if (contentType == 'Epilogue') return 'E';
+    return '$chapterNum';
   }
 
   Color _getContentTypeColor(String contentType) {
     switch (contentType) {
       case 'Prologue':
-        return AppTheme.inkTeal;
+        return AppTheme.inkSage;
       case 'Epilogue':
-        return AppTheme.inkTerracotta;
+        return AppTheme.inkEspresso;
       case 'Chapter':
-        return AppTheme.inkIndigo;
       default:
-        return AppTheme.inkUmber;
+        return AppTheme.inkMaroon;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       decoration: const BoxDecoration(
-        color: AppTheme.inkCanvas,
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(24),
-        ),
+        color: AppTheme.surfaceColor,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ── Header ───────────────────────────────────
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Chapters',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.inkEspresso,
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppTheme.inkMaroon.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
                   ),
+                  child: const Icon(Icons.menu_book_rounded,
+                      color: AppTheme.inkMaroon, size: 20),
                 ),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close, color: AppTheme.inkEspresso),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                )
+                const SizedBox(width: 10),
+                Text('Chapters', style: AppTypography.headingSm),
+                const Spacer(),
+                GestureDetector(
+                  onTap: () => _close(context),
+                  child: const Icon(Icons.close,
+                      color: AppTheme.inkEspresso, size: 22),
+                ),
               ],
             ),
             const SizedBox(height: 16),
+
             Expanded(
               child: StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance
                     .collection('stories')
                     .doc(storyId)
                     .collection('chapters')
+                    .where('isPublished', isEqualTo: true)
                     .orderBy('chapterNumber', descending: false)
                     .snapshots(),
                 builder: (context, snapshot) {
                   if (snapshot.hasError) {
                     return Center(
-                      child: Text(
-                        'Error loading chapters',
-                        style: TextStyle(
-                          color: AppTheme.inkTerracotta,
-                          fontSize: 13,
-                        ),
-                      ),
+                      child: Text('Error loading chapters',
+                          style: AppTypography.bodySm
+                              .copyWith(color: AppTheme.inkTerracotta)),
                     );
                   }
-
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(
-                      child: CircularProgressIndicator(
-                        color: AppTheme.inkTerracotta,
-                      ),
-                    );
+                        child: CircularProgressIndicator(
+                            color: AppTheme.inkMaroon));
                   }
 
                   final chapters = snapshot.data?.docs ?? [];
@@ -105,128 +121,242 @@ class ChaptersListModal extends StatelessWidget {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(
-                            Icons.menu_book_outlined,
-                            size: 48,
-                            color: AppTheme.inkUmber.withValues(alpha: 0.25),
-                          ),
+                          Icon(Icons.menu_book_outlined,
+                              size: 48,
+                              color: AppTheme.inkUmber.withValues(alpha: 0.2)),
                           const SizedBox(height: 12),
-                          Text(
-                            'No chapters yet',
-                            style: TextStyle(
-                              color: AppTheme.inkUmber.withValues(alpha: 0.5),
-                              fontSize: 14,
-                            ),
-                          ),
+                          Text('No chapters yet',
+                              style: AppTypography.bodySm.copyWith(
+                                  color: AppTheme.inkUmber
+                                      .withValues(alpha: 0.5))),
                         ],
                       ),
                     );
                   }
 
                   return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // ── New Chapter button (write mode only) ──
+                      if (!isReadMode) ...[
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              int maxChapter = 0;
+                              for (var doc in chapters) {
+                                final d = doc.data() as Map<String, dynamic>;
+                                final num = d['chapterNumber'] as int? ?? 0;
+                                final type =
+                                    d['contentType'] as String? ?? 'Chapter';
+                                if (type == 'Chapter' && num > maxChapter) {
+                                  maxChapter = num;
+                                }
+                              }
+                              onAddNewChapter(maxChapter + 1);
+                              _close(context);
+                            },
+                            icon: const Icon(Icons.add, size: 18),
+                            label: Text('New chapter',
+                                style: AppTypography.buttonMedium),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.inkMaroon,
+                              foregroundColor: Colors.white,
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 14),
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                      ] else
+                        const SizedBox(height: 8),
+
+                      // ── Chapter count label ───────────
+                      Text(
+                        '${chapters.length} CHAPTER${chapters.length == 1 ? '' : 'S'}',
+                        style: AppTypography.labelSm.copyWith(
+                          color: AppTheme.inkUmber.withValues(alpha: 0.5),
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+
+                      // ── Chapter list ──────────────────
                       Expanded(
-                        child: ListView.builder(
+                        child: ListView.separated(
                           itemCount: chapters.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 0),
                           itemBuilder: (context, index) {
                             final doc = chapters[index];
                             final data = doc.data() as Map<String, dynamic>;
-                            final chapterNumber = data['chapterNumber'] as int? ?? 0;
-                            final contentType = data['contentType'] as String? ?? 'Chapter';
+                            final chapterNumber =
+                                data['chapterNumber'] as int? ?? 0;
+                            final contentType =
+                                data['contentType'] as String? ?? 'Chapter';
                             final title = data['title'] as String? ?? '';
-                            final wordCount = data['wordCount'] as int? ?? 0;
                             final isSelected = chapterNumber == currentChapter;
-                            final contentTypeColor = _getContentTypeColor(contentType);
+                            final typeColor = _getContentTypeColor(contentType);
+                            final circleLabel =
+                                _getCircleLabel(chapterNumber, contentType);
+                            final chapterLabel =
+                                _getChapterLabel(chapterNumber, contentType);
 
                             return GestureDetector(
                               onTap: () {
                                 onChapterSelected(chapterNumber, data);
-                                Navigator.pop(context);
                               },
                               child: Container(
-                                margin: const EdgeInsets.only(bottom: 10),
-                                padding: const EdgeInsets.all(12),
+                                margin:
+                                    const EdgeInsets.symmetric(vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 12),
                                 decoration: BoxDecoration(
                                   color: isSelected
-                                      ? AppTheme.inkIndigo
+                                      ? AppTheme.inkMaroon
+                                          .withValues(alpha: 0.08)
                                       : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: isSelected
-                                        ? AppTheme.inkIndigo
-                                        : AppTheme.inkUmber.withValues(alpha: 0.1),
-                                  ),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: isSelected
+                                      ? Border.all(
+                                          color: AppTheme.inkMaroon
+                                              .withValues(alpha: 0.2),
+                                          width: 1,
+                                        )
+                                      : null,
                                 ),
                                 child: Row(
                                   children: [
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
-                                          children: [
-                                            Text(
-                                              _getChapterLabel(chapterNumber, contentType),
-                                              style: TextStyle(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.bold,
-                                                color: isSelected
-                                                    ? AppTheme.inkIndigo
-                                                    : AppTheme.inkEspresso,
-                                              ),
+                                    // Circle number
+                                    if (isSelected)
+                                      Container(
+                                        width: 36,
+                                        height: 36,
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.inkMaroon,
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            circleLabel,
+                                            style: GoogleFonts.dmSerifDisplay(
+                                              fontSize: 14,
+                                              color: Colors.white,
                                             ),
-                                            const SizedBox(width: 8),
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(
-                                                  horizontal: 6, vertical: 2),
-                                              decoration: BoxDecoration(
-                                                color: contentTypeColor
-                                                    .withValues(alpha: 0.12),
-                                                borderRadius:
-                                                    BorderRadius.circular(12),
-                                              ),
-                                              child: Text(
-                                                contentType,
-                                                style: TextStyle(
-                                                  fontSize: 9,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: contentTypeColor,
+                                          ),
+                                        ),
+                                      )
+                                    else
+                                      SizedBox(
+                                        width: 36,
+                                        child: Center(
+                                          child: Text(
+                                            circleLabel,
+                                            style: GoogleFonts.dmSerifDisplay(
+                                              fontSize: 15,
+                                              color: AppTheme.inkUmber
+                                                  .withValues(alpha: 0.4),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    const SizedBox(width: 10),
+
+                                    // Labels + title
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Text(
+                                                chapterLabel,
+                                                style: AppTypography.labelMd
+                                                    .copyWith(
+                                                  color: isSelected
+                                                      ? AppTheme.inkMaroon
+                                                      : AppTheme.inkUmber
+                                                          .withValues(
+                                                              alpha: 0.6),
+                                                  fontSize: 12,
                                                 ),
                                               ),
+                                              const SizedBox(width: 6),
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 7,
+                                                        vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: typeColor
+                                                      .withValues(alpha: 0.1),
+                                                  borderRadius:
+                                                      BorderRadius.circular(20),
+                                                ),
+                                                child: Text(
+                                                  contentType,
+                                                  style: AppTypography.labelSm
+                                                      .copyWith(
+                                                    color: typeColor,
+                                                    fontSize: 10,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          if (title.isNotEmpty) ...[
+                                            const SizedBox(height: 3),
+                                            Text(
+                                              title,
+                                              style: GoogleFonts.dmSerifDisplay(
+                                                fontSize: 15,
+                                                color: AppTheme.inkEspresso,
+                                                height: 1.2,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
                                             ),
                                           ],
-                                        ),
-                                        if (title.isNotEmpty) ...[
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            title,
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: AppTheme.inkUmber
-                                                  .withValues(alpha: 0.7),
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
                                         ],
-                                      ],
-                                    ),
-                                    const Spacer(),
-                                    Text(
-                                      '$wordCount words',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: AppTheme.inkUmber
-                                            .withValues(alpha: 0.55),
                                       ),
                                     ),
-                                    if (isSelected) ...[
-                                      const SizedBox(width: 8),
-                                      const Icon(
+
+                                    // Trailing icon
+                                    if (!isReadMode)
+                                      isSelected
+                                          ? GestureDetector(
+                                              onTap: () {},
+                                              child: Container(
+                                                width: 32,
+                                                height: 32,
+                                                decoration: BoxDecoration(
+                                                  color: AppTheme.inkMaroon,
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                child: const Icon(Icons.edit,
+                                                    size: 15,
+                                                    color: Colors.white),
+                                              ),
+                                            )
+                                          : Icon(
+                                              Icons.more_vert,
+                                              size: 20,
+                                              color: AppTheme.inkUmber
+                                                  .withValues(alpha: 0.35),
+                                            )
+                                    else if (isSelected)
+                                      Icon(
                                         Icons.check_circle,
                                         size: 18,
-                                        color: AppTheme.inkIndigo,
+                                        color: AppTheme.inkMaroon
+                                            .withValues(alpha: 0.6),
                                       ),
-                                    ],
                                   ],
                                 ),
                               ),
@@ -234,39 +364,31 @@ class ChaptersListModal extends StatelessWidget {
                           },
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            // Find the highest chapter number (excluding prologue=0 and epilogue=999)
-                            int maxChapter = 0;
-                            for (var doc in chapters) {
-                              final data = doc.data() as Map<String, dynamic>;
-                              final chapterNum = data['chapterNumber'] as int? ?? 0;
-                              final contentType = data['contentType'] as String? ?? 'Chapter';
-                              
-                              // Only count regular chapters (not Prologue or Epilogue)
-                              if (contentType == 'Chapter' && chapterNum > maxChapter) {
-                                maxChapter = chapterNum;
-                              }
-                            }
-                            // Next chapter is maxChapter + 1
-                            onAddNewChapter(maxChapter + 1);
-                            Navigator.pop(context);
-                          },
-                          icon: const Icon(Icons.add, size: 18),
-                          label: const Text('New Chapter'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.inkTerracotta,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
+
+                      // ── Footer ────────────────────────
+                      if (!isReadMode)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.drag_indicator,
+                                  size: 16,
+                                  color: AppTheme.inkUmber
+                                      .withValues(alpha: 0.35)),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Drag to reorder',
+                                style: AppTypography.caption.copyWith(
+                                  color: AppTheme.inkUmber
+                                      .withValues(alpha: 0.45),
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ),
+                        )
+                      else
+                        const SizedBox(height: 16),
                     ],
                   );
                 },
