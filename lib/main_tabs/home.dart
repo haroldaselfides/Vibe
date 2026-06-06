@@ -405,44 +405,39 @@ class _HomeScreenState extends State<HomeScreen> {
             // fit: BoxFit.contain,
           ),
           // Avatar
-          GestureDetector(
-            onTap: () {
-              Navigator.of(context).pushNamed('/profile');
-            },
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppTheme.inkMaroon,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.inkMaroon.withValues(alpha: 0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Center(
-                child: _isLoadingUserData
-                    ? const SizedBox(
-                        width: 30,
-                        height: 30,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : Text(
-                        _userInitials,
-                        // labelMd — Manrope 12 bold, white on terracotta
-                        style: AppTypography.labelMd.copyWith(
-                          color: Colors.white,
-                          fontSize: 14,
-                        ),
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: AppTheme.inkMaroon,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.inkMaroon.withValues(alpha: 0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Center(
+              child: _isLoadingUserData
+                  ? const SizedBox(
+                      width: 30,
+                      height: 30,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(Colors.white),
                       ),
-              ),
+                    )
+                  : Text(
+                      _userInitials,
+                      // labelMd — Manrope 12 bold, white on terracotta
+                      style: AppTypography.labelMd.copyWith(
+                        color: Colors.white,
+                        fontSize: 14,
+                      ),
+                    ),
             ),
           ),
         ],

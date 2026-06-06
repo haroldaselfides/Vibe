@@ -206,7 +206,7 @@ class SettingsScreen extends StatelessWidget {
 
   Widget _buildLogoutButton(BuildContext context, LogoutHandler handler) {
     return GestureDetector(
-      onTap: () => handler.buildLogoutButton(context),
+      onTap: () => handler.handleLogout(context),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 15),
         decoration: BoxDecoration(

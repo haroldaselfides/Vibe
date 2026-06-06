@@ -884,10 +884,6 @@ class _PostScreenState extends State<PostScreen> {
                     children: [
                       Icon(Icons.menu_book_outlined,
                           size: 16, color: AppTheme.inkMaroon),
-                      const SizedBox(width: 4),
-                      Text('Chapters',
-                          style: AppTypography.labelSm
-                              .copyWith(color: AppTheme.inkGold)),
                     ],
                   ),
                 ),
