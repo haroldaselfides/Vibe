@@ -32,9 +32,9 @@ class _ExploreScreenState extends State<ExploreScreen>
   String _searchQuery        = '';
   bool   _isSearchingStories = true;
 
-  final Set<String> _savedStoryIds = {};
+  final Set<String> _savedStoryIds  = {};
+  final Set<String> _followingIds   = {};   // tracks who current user follows
 
-  // Cached snapshots — once we have data, we never go back to a spinner
   QuerySnapshot? _cachedUsersSnapshot;
   QuerySnapshot? _cachedStoriesSnapshot;
 
@@ -42,6 +42,7 @@ class _ExploreScreenState extends State<ExploreScreen>
   void initState() {
     super.initState();
     _loadSavedStoryIds();
+    _loadFollowingIds();
   }
 
   @override
@@ -49,6 +50,8 @@ class _ExploreScreenState extends State<ExploreScreen>
     _searchController.dispose();
     super.dispose();
   }
+
+  // ── Load saved library IDs ─────────────────────────────────────────────────
 
   Future<void> _loadSavedStoryIds() async {
     final user = FirebaseAuth.instance.currentUser;
@@ -66,6 +69,114 @@ class _ExploreScreenState extends State<ExploreScreen>
       debugPrint('Error loading saved story IDs: $e');
     }
   }
+
+  // ── Load following IDs ─────────────────────────────────────────────────────
+
+  Future<void> _loadFollowingIds() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('following')
+          .get();
+      if (mounted) {
+        setState(() => _followingIds.addAll(snap.docs.map((d) => d.id)));
+      }
+    } catch (e) {
+      debugPrint('Error loading following IDs: $e');
+    }
+  }
+
+  // ── Toggle follow ──────────────────────────────────────────────────────────
+
+  Future<void> _toggleFollow(String targetUserId) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      _showDialog(
+        icon: Icon(Icons.login_outlined, color: AppTheme.inkMaroon, size: 48),
+        title: 'Login Required',
+        content: 'Please log in to follow writers',
+        actions: [
+          _dialogTextButton('Cancel', () => Navigator.of(context).pop()),
+          _dialogElevatedButton('Go to Login', () {
+            Navigator.of(context).pop();
+            Navigator.of(context).pushNamed('/login');
+          }),
+        ],
+      );
+      return;
+    }
+    if (user.uid == targetUserId) return;
+
+    final alreadyFollowing = _followingIds.contains(targetUserId);
+
+    // Optimistic update
+    setState(() {
+      if (alreadyFollowing) {
+        _followingIds.remove(targetUserId);
+      } else {
+        _followingIds.add(targetUserId);
+      }
+    });
+
+    try {
+      final followingRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('following')
+          .doc(targetUserId);
+
+      final followersRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(targetUserId)
+          .collection('followers')
+          .doc(user.uid);
+
+      if (alreadyFollowing) {
+        await followingRef.delete();
+        await followersRef.delete();
+      } else {
+        final now = FieldValue.serverTimestamp();
+
+        // Fetch target user's profile to store their name in current user's following
+        final targetSnap = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(targetUserId)
+            .get();
+        final targetData = targetSnap.data() ?? {};
+
+        // Store target's info under current user's /following/{targetId}
+        await followingRef.set({
+          'followedAt'  : now,
+          'displayName' : targetData['displayName'] ?? '',
+          'username'    : targetData['username']    ?? '',
+          'photoUrl'    : targetData['photoUrl']    ?? '',
+        });
+
+        // Store current user's info under target's /followers/{currentUid}
+        await followersRef.set({
+          'followedAt'  : now,
+          'displayName' : user.displayName ?? '',
+          'username'    : user.email?.split('@').first ?? '',
+          'photoUrl'    : user.photoURL ?? '',
+        });
+      }
+    } catch (e) {
+      // Revert on error
+      setState(() {
+        if (alreadyFollowing) {
+          _followingIds.add(targetUserId);
+        } else {
+          _followingIds.remove(targetUserId);
+        }
+      });
+      debugPrint('Error toggling follow: $e');
+    }
+  }
+
+  // ── Toggle library ─────────────────────────────────────────────────────────
 
   Future<void> _toggleLibrary(
       String storyId, Map<String, dynamic> storyData) async {
@@ -106,10 +217,13 @@ class _ExploreScreenState extends State<ExploreScreen>
         await ref.delete();
         if (mounted) {
           _showDialog(
-            icon: Icon(Icons.bookmark_outline, color: AppTheme.inkMaroon, size: 48),
+            icon: Icon(Icons.bookmark_outline,
+                color: AppTheme.inkMaroon, size: 48),
             title: 'Removed',
             content: 'Story removed from Library',
-            actions: [_dialogTextButton('OK', () => Navigator.of(context).pop())],
+            actions: [
+              _dialogTextButton('OK', () => Navigator.of(context).pop())
+            ],
           );
         }
       } else {
@@ -126,12 +240,13 @@ class _ExploreScreenState extends State<ExploreScreen>
             icon: Icon(Icons.bookmark_rounded, color: Colors.green, size: 48),
             title: 'Saved!',
             content: 'Story added to Library',
-            actions: [_dialogTextButton('OK', () => Navigator.of(context).pop())],
+            actions: [
+              _dialogTextButton('OK', () => Navigator.of(context).pop())
+            ],
           );
         }
       }
     } catch (e) {
-      // Revert optimistic update on error
       setState(() {
         if (alreadySaved) {
           _savedStoryIds.add(storyId);
@@ -143,7 +258,7 @@ class _ExploreScreenState extends State<ExploreScreen>
     }
   }
 
-  // ── Shared dialog helper ───────────────────────────────────────────────────
+  // ── Shared dialog helpers ──────────────────────────────────────────────────
 
   void _showDialog({
     required Widget icon,
@@ -155,16 +270,19 @@ class _ExploreScreenState extends State<ExploreScreen>
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: AppTheme.surfaceColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         icon: icon,
         title: Text(
           title,
-          style: AppTypography.headingSm.copyWith(color: AppTheme.inkEspresso),
+          style: AppTypography.headingSm
+              .copyWith(color: AppTheme.inkEspresso),
           textAlign: TextAlign.center,
         ),
         content: Text(
           content,
-          style: AppTypography.bodyMd.copyWith(color: AppTheme.inkUmber),
+          style:
+              AppTypography.bodyMd.copyWith(color: AppTheme.inkUmber),
           textAlign: TextAlign.center,
         ),
         actions: actions,
@@ -175,10 +293,9 @@ class _ExploreScreenState extends State<ExploreScreen>
   Widget _dialogTextButton(String label, VoidCallback onPressed) {
     return TextButton(
       onPressed: onPressed,
-      child: Text(
-        label,
-        style: AppTypography.labelMd.copyWith(color: AppTheme.inkMaroon),
-      ),
+      child: Text(label,
+          style:
+              AppTypography.labelMd.copyWith(color: AppTheme.inkMaroon)),
     );
   }
 
@@ -187,12 +304,11 @@ class _ExploreScreenState extends State<ExploreScreen>
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
         backgroundColor: AppTheme.inkMaroon,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20)),
       ),
-      child: Text(
-        label,
-        style: AppTypography.labelMd.copyWith(color: Colors.white),
-      ),
+      child: Text(label,
+          style: AppTypography.labelMd.copyWith(color: Colors.white)),
     );
   }
 
@@ -265,9 +381,7 @@ class _ExploreScreenState extends State<ExploreScreen>
               ),
             ],
           ),
-
           const SizedBox(height: 18),
-
           // ── Search bar ──
           Container(
             height    : 46,
@@ -298,11 +412,13 @@ class _ExploreScreenState extends State<ExploreScreen>
                     : null,
                 border         : InputBorder.none,
                 isDense        : true,
-                contentPadding : const EdgeInsets.symmetric(horizontal: 12),
+                contentPadding :
+                    const EdgeInsets.symmetric(horizontal: 12),
                 hintStyle      : AppTypography.bodyMd.copyWith(
                     color: AppTheme.inkUmber.withOpacity(0.6)),
               ),
-              style: AppTypography.bodyMd.copyWith(color: AppTheme.inkEspresso),
+              style: AppTypography.bodyMd
+                  .copyWith(color: AppTheme.inkEspresso),
             ),
           ),
         ],
@@ -377,7 +493,8 @@ class _ExploreScreenState extends State<ExploreScreen>
             _isSearchingStories
                 ? 'Search for your next favorite story'
                 : 'Search for writers to follow',
-            style: AppTypography.bodyMd.copyWith(color: AppTheme.inkUmber),
+            style:
+                AppTypography.bodyMd.copyWith(color: AppTheme.inkUmber),
           ),
         ],
       ),
@@ -393,7 +510,8 @@ class _ExploreScreenState extends State<ExploreScreen>
         if (snapshot.hasData) _cachedStoriesSnapshot = snapshot.data;
         if (_cachedStoriesSnapshot == null) {
           return const Center(
-              child: CircularProgressIndicator(color: AppTheme.inkMaroon));
+              child:
+                  CircularProgressIndicator(color: AppTheme.inkMaroon));
         }
 
         final docs = _cachedStoriesSnapshot!.docs.where((doc) {
@@ -401,7 +519,8 @@ class _ExploreScreenState extends State<ExploreScreen>
           if (data.isEmpty) return false;
           final title = (data['title'] ?? '').toString().toLowerCase();
           final genre = (data['genre']  ?? '').toString().toLowerCase();
-          return title.contains(_searchQuery) || genre.contains(_searchQuery);
+          return title.contains(_searchQuery) ||
+              genre.contains(_searchQuery);
         }).toList();
 
         if (docs.isEmpty) {
@@ -414,7 +533,8 @@ class _ExploreScreenState extends State<ExploreScreen>
                     color: AppTheme.inkUmber.withValues(alpha: 0.25)),
                 const SizedBox(height: 12),
                 Text('No stories found',
-                    style: AppTypography.bodyMd.copyWith(color: AppTheme.inkUmber)),
+                    style: AppTypography.bodyMd
+                        .copyWith(color: AppTheme.inkUmber)),
                 const SizedBox(height: 4),
                 Text('Try a different title or genre',
                     style: AppTypography.bodySm.copyWith(
@@ -489,7 +609,6 @@ class _ExploreScreenState extends State<ExploreScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
             // ── Cover art ──
             Stack(
               children: [
@@ -511,14 +630,12 @@ class _ExploreScreenState extends State<ExploreScreen>
                   ),
               ],
             ),
-
             // ── Info ──
             Padding(
               padding: const EdgeInsets.all(10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-
                   Text(
                     title,
                     style: AppTypography.bodyMd.copyWith(
@@ -530,16 +647,14 @@ class _ExploreScreenState extends State<ExploreScreen>
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
-
                   Text(
                     genre.isNotEmpty ? '$genre · $storyType' : storyType,
-                    style: AppTypography.labelSm.copyWith(
-                        color: AppTheme.inkUmber),
+                    style: AppTypography.labelSm
+                        .copyWith(color: AppTheme.inkUmber),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 8),
-
                   if (isInProgress) ...[
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -575,14 +690,14 @@ class _ExploreScreenState extends State<ExploreScreen>
                     ),
                     const SizedBox(height: 8),
                   ],
-
                   // ── Save to Library button ──
                   SizedBox(
                     width : double.infinity,
                     height: 32,
                     child: isSaved
                         ? OutlinedButton.icon(
-                            onPressed: () => _toggleLibrary(storyId, data),
+                            onPressed: () =>
+                                _toggleLibrary(storyId, data),
                             icon : Icon(Icons.bookmark,
                                 size : 14,
                                 color: AppTheme.inkMaroon),
@@ -600,12 +715,13 @@ class _ExploreScreenState extends State<ExploreScreen>
                               shape          : RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(
                                       AppTheme.radiusXs)),
-                              backgroundColor:
-                                  AppTheme.inkMaroon.withValues(alpha: 0.06),
+                              backgroundColor: AppTheme.inkMaroon
+                                  .withValues(alpha: 0.06),
                             ),
                           )
                         : ElevatedButton.icon(
-                            onPressed: () => _toggleLibrary(storyId, data),
+                            onPressed: () =>
+                                _toggleLibrary(storyId, data),
                             icon : Icon(Icons.bookmark_add_outlined,
                                 size : 14,
                                 color: AppTheme.inkCanvas),
@@ -642,9 +758,11 @@ class _ExploreScreenState extends State<ExploreScreen>
       icon = Icons.auto_awesome;
     } else if (lowerGenre.contains('sci') || lowerGenre.contains('space')) {
       icon = Icons.rocket_launch_outlined;
-    } else if (lowerGenre.contains('poet') || lowerGenre.contains('narrative')) {
+    } else if (lowerGenre.contains('poet') ||
+        lowerGenre.contains('narrative')) {
       icon = Icons.format_quote_rounded;
-    } else if (lowerGenre.contains('post') || lowerGenre.contains('apocalyptic')) {
+    } else if (lowerGenre.contains('post') ||
+        lowerGenre.contains('apocalyptic')) {
       icon = Icons.public_off_outlined;
     } else {
       icon = Icons.auto_stories_outlined;
@@ -666,7 +784,8 @@ class _ExploreScreenState extends State<ExploreScreen>
         children: [
           if (isProgress) ...[
             Container(
-              width : 6, height: 6,
+              width : 6,
+              height: 6,
               decoration: BoxDecoration(
                   color: AppTheme.inkGold, shape: BoxShape.circle),
             ),
@@ -695,24 +814,19 @@ class _ExploreScreenState extends State<ExploreScreen>
         if (snapshot.hasData) _cachedUsersSnapshot = snapshot.data;
         if (_cachedUsersSnapshot == null) {
           return const Center(
-              child: CircularProgressIndicator(color: AppTheme.inkMaroon));
+              child:
+                  CircularProgressIndicator(color: AppTheme.inkMaroon));
         }
 
         final docs = _cachedUsersSnapshot!.docs.where((doc) {
           final data = doc.data() as Map<String, dynamic>? ?? {};
-
-          // Skip empty/corrupted documents
           if (data.isEmpty) return false;
-
-          // Skip the currently logged-in user
           if (doc.id == currentUid) return false;
 
-          // ── FIX: parse isPublic robustly from any stored type ──
-          // Treat missing field as public (default true)
           final rawPublic = data['isPublic'];
           bool isPublic;
           if (rawPublic == null) {
-            isPublic = true; // field missing → treat as public
+            isPublic = true;
           } else if (rawPublic is bool) {
             isPublic = rawPublic;
           } else if (rawPublic is int) {
@@ -720,11 +834,8 @@ class _ExploreScreenState extends State<ExploreScreen>
           } else {
             isPublic = rawPublic.toString().toLowerCase() == 'true';
           }
-
-          // Only show public profiles in search results
           if (!isPublic) return false;
 
-          // ── FIX: search displayName, username, bio — not email ──
           final name     = (data['displayName'] ?? '').toString().toLowerCase();
           final username = (data['username']    ?? '').toString().toLowerCase();
           final bio      = (data['bio']         ?? '').toString().toLowerCase();
@@ -744,7 +855,8 @@ class _ExploreScreenState extends State<ExploreScreen>
                     color: AppTheme.inkUmber.withValues(alpha: 0.25)),
                 const SizedBox(height: 12),
                 Text('No writers found',
-                    style: AppTypography.bodyMd.copyWith(color: AppTheme.inkUmber)),
+                    style: AppTypography.bodyMd
+                        .copyWith(color: AppTheme.inkUmber)),
                 const SizedBox(height: 4),
                 Text('Try a different name or username',
                     style: AppTypography.bodySm.copyWith(
@@ -760,10 +872,12 @@ class _ExploreScreenState extends State<ExploreScreen>
           separatorBuilder : (_, __) =>
               Divider(color: AppTheme.borderColor, height: 1),
           itemBuilder: (context, index) {
-            final data        = docs[index].data() as Map<String, dynamic>;
+            final doc         = docs[index];
+            final data        = doc.data() as Map<String, dynamic>;
+            final targetId    = doc.id;
             final photoUrl    = data['photoUrl'] as String?;
+            final isFollowing = _followingIds.contains(targetId);
 
-            // ── FIX: resolve isPublic the same robust way ──
             final rawPublic = data['isPublic'];
             final isPublic  = rawPublic == null
                 ? true
@@ -777,26 +891,39 @@ class _ExploreScreenState extends State<ExploreScreen>
                 (data['displayName'] as String?)?.trim().isNotEmpty == true
                     ? data['displayName'] as String
                     : 'Writer';
-            final username = (data['username'] as String?)?.trim() ?? '';
-            final bio      = (data['bio']      as String?)?.trim() ?? '';
+            final username =
+                (data['username'] as String?)?.trim() ?? '';
+            final bio = (data['bio'] as String?)?.trim() ?? '';
 
             return ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: CircleAvatar(
-                radius         : 22,
-                backgroundColor: AppTheme.inkBgCard,
-                backgroundImage: (photoUrl != null && photoUrl.isNotEmpty)
-                    ? NetworkImage(photoUrl)
-                    : null,
-                child: (photoUrl == null || photoUrl.isEmpty)
-                    ? Text(
-                        displayName.isNotEmpty
-                            ? displayName[0].toUpperCase()
-                            : '?',
-                        style: AppTypography.labelMd
-                            .copyWith(color: AppTheme.inkUmber),
+              contentPadding: const EdgeInsets.symmetric(vertical: 4),
+              leading: GestureDetector(
+                onTap: () => isPublic
+                    ? Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              WriterProfileScreen(userId: targetId),
+                        ),
                       )
                     : null,
+                child: CircleAvatar(
+                  radius         : 22,
+                  backgroundColor: AppTheme.inkBgCard,
+                  backgroundImage:
+                      (photoUrl != null && photoUrl.isNotEmpty)
+                          ? NetworkImage(photoUrl)
+                          : null,
+                  child: (photoUrl == null || photoUrl.isEmpty)
+                      ? Text(
+                          displayName.isNotEmpty
+                              ? displayName[0].toUpperCase()
+                              : '?',
+                          style: AppTypography.labelMd
+                              .copyWith(color: AppTheme.inkUmber),
+                        )
+                      : null,
+                ),
               ),
               title: Text(displayName, style: AppTypography.authorName),
               subtitle: Column(
@@ -815,9 +942,52 @@ class _ExploreScreenState extends State<ExploreScreen>
                     ),
                 ],
               ),
-              trailing: !isPublic
-                  ? Icon(Icons.lock_outline,
-                      size: 16, color: AppTheme.inkSage)
+              // ── Follow button ──────────────────────────────────────────
+              trailing: currentUid != null && currentUid != targetId
+                  ? AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 200),
+                      child: isFollowing
+                          ? OutlinedButton(
+                              key      : const ValueKey('following'),
+                              onPressed: () => _toggleFollow(targetId),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 14),
+                                side : BorderSide(
+                                    color: AppTheme.inkSage, width: 1),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius:
+                                        BorderRadius.circular(20)),
+                              ),
+                              child: Text(
+                                'Following',
+                                style: AppTypography.labelSm.copyWith(
+                                  color   : AppTheme.inkSage,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            )
+                          : ElevatedButton(
+                              key      : const ValueKey('follow'),
+                              onPressed: () => _toggleFollow(targetId),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.inkMaroon,
+                                elevation      : 0,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 14),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius:
+                                        BorderRadius.circular(20)),
+                              ),
+                              child: Text(
+                                'Follow',
+                                style: AppTypography.labelSm.copyWith(
+                                  color   : Colors.white,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                    )
                   : null,
               onTap: () {
                 if (isPublic) {
@@ -825,7 +995,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                     context,
                     MaterialPageRoute(
                       builder: (_) =>
-                          WriterProfileScreen(userId: docs[index].id),
+                          WriterProfileScreen(userId: targetId),
                     ),
                   );
                 } else {

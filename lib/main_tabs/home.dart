@@ -300,6 +300,8 @@ class _HomeScreenState extends State<HomeScreen> {
           final chapterData = snapshot.docs.first.data();
           chapterData['storyId']   = storyId;
           chapterData['storyType'] = storyData['storyType'];
+          chapterData['authorId']  = storyData['authorId'];
+          chapterData['authorUsername'] = storyData['authorUsername'];
           if (!mounted) return;
           Navigator.of(context).push(
             MaterialPageRoute(
@@ -848,11 +850,17 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       const SizedBox(height: 4),
                       // Author handle — authorName (Manrope 13 semi-bold)
-                      Text(
-                        authorHandle,
-                        style: AppTypography.authorName.copyWith(
-                          color: AppTheme.inkUmber,
-                        ),
+                      Row(
+                        children: [
+                          Text(
+                            authorHandle,
+                            style: AppTypography.authorName.copyWith(
+                              color: AppTheme.inkUmber,
+                            ),
+                          ),
+                          const SizedBox(width: 200),
+                          _FollowButton(authorId: story['authorId'] as String? ?? ''),
+                        ],
                       ),
                       const SizedBox(height: 8),
                       // ── FIXED: Metadata row with horizontal scroll ───────
@@ -968,6 +976,125 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FollowButton extends StatefulWidget {
+  final String authorId;
+  const _FollowButton({required this.authorId});
+
+  @override
+  State<_FollowButton> createState() => _FollowButtonState();
+}
+
+class _FollowButtonState extends State<_FollowButton> {
+  bool _isFollowing = false;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkFollowStatus();
+  }
+
+  Future<void> _checkFollowStatus() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null || widget.authorId.isEmpty || uid == widget.authorId) {
+      setState(() => _loading = false);
+      return;
+    }
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('following')
+        .doc(widget.authorId)
+        .get();
+    if (mounted) setState(() { _isFollowing = doc.exists; _loading = false; });
+  }
+
+  Future<void> _toggle() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || widget.authorId.isEmpty) return;
+
+    final wasFollowing = _isFollowing;
+    setState(() => _isFollowing = !wasFollowing);
+
+    final followingRef = FirebaseFirestore.instance
+        .collection('users').doc(user.uid)
+        .collection('following').doc(widget.authorId);
+    final followersRef = FirebaseFirestore.instance
+        .collection('users').doc(widget.authorId)
+        .collection('followers').doc(user.uid);
+
+    try {
+      if (wasFollowing) {
+        await followingRef.delete();
+        await followersRef.delete();
+      } else {
+        final now = FieldValue.serverTimestamp();
+        // Fetch target's info for the following doc
+        final targetSnap = await FirebaseFirestore.instance
+            .collection('users').doc(widget.authorId).get();
+        final td = targetSnap.data() ?? {};
+        await followingRef.set({
+          'followedAt': now,
+          'displayName': td['displayName'] ?? '',
+          'username':    td['username']    ?? '',
+          'photoUrl':    td['photoUrl']    ?? '',
+        });
+        // Fetch current user's Firestore profile for the followers doc
+        final meSnap = await FirebaseFirestore.instance
+            .collection('users').doc(user.uid).get();
+        final md = meSnap.data() ?? {};
+        await followersRef.set({
+          'followedAt':  now,
+          'displayName': md['displayName'] ?? '',
+          'username':    md['username']    ?? '',
+          'photoUrl':    md['photoUrl']    ?? '',
+        });
+      }
+    } catch (e) {
+      setState(() => _isFollowing = wasFollowing);
+      debugPrint('Follow error: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    // Hide button for own stories or empty authorId
+    if (widget.authorId.isEmpty || uid == widget.authorId) {
+      return const SizedBox.shrink();
+    }
+    if (_loading) {
+      return const SizedBox(
+        width: 14, height: 14,
+        child: CircularProgressIndicator(strokeWidth: 1.5),
+      );
+    }
+    return GestureDetector(
+      onTap: _toggle,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+        decoration: BoxDecoration(
+          color: _isFollowing
+              ? Colors.transparent
+              : AppTheme.inkMaroon,
+          border: Border.all(
+            color: _isFollowing ? AppTheme.inkSage : AppTheme.inkMaroon,
+          ),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          _isFollowing ? 'Following' : 'Follow',
+          style: AppTypography.labelSm.copyWith(
+            fontSize: 11,
+            color: _isFollowing ? AppTheme.inkSage : Colors.white,
+          ),
         ),
       ),
     );

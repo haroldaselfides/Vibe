@@ -6,6 +6,8 @@ import '../story/chapter_list_modal.dart'; // adjust path as needed
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:convert';
 import '../theme/new_app_theme.dart';
+import 'package:intl/intl.dart'; // For date formatting
+
 // ── Reading Progress Status ───────────────────────────────────────────────────
 enum ReadingStatus {
   notStarted,
@@ -34,6 +36,45 @@ extension ReadingStatusExt on ReadingStatus {
     }
   }
 }
+
+// ── Comment Model ─────────────────────────────────────────────────────────────
+class Comment {
+  final String id;
+  final String userId;
+  final String username;
+  final String text;
+  final DateTime timestamp;
+  final int likes;
+
+  Comment({
+    required this.id,
+    required this.userId,
+    required this.username,
+    required this.text,
+    required this.timestamp,
+    required this.likes,
+  });
+
+  factory Comment.fromMap(String id, Map<String, dynamic> data) {
+    return Comment(
+      id: id,
+      userId: data['userId'] ?? '',
+      username: data['username'] ?? 'Anonymous',
+      text: data['text'] ?? '',
+      timestamp: (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      likes: data['likes'] ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+    'userId': userId,
+    'username': username,
+    'text': text,
+    'timestamp': Timestamp.fromDate(timestamp),
+    'likes': likes,
+  };
+}
+
 // ── Reading theme data ────────────────────────────────────────────────────────
 class _ReadTheme {
   final String name;
@@ -95,6 +136,7 @@ const List<_ReadTheme> _kThemes = [
     isDark: true,
   ),
 ];
+
 // ── Line height options ───────────────────────────────────────────────────────
 enum _LineHeight { compact, comfortable, spacious }
 extension _LineHeightExt on _LineHeight {
@@ -119,6 +161,7 @@ extension _LineHeightExt on _LineHeight {
     }
   }
 }
+
 // ── Delta → RichText renderer ─────────────────────────────────────────────────
 class _DeltaText extends StatelessWidget {
   final String rawContent;
@@ -244,12 +287,14 @@ class _DeltaText extends StatelessWidget {
     );
   }
 }
+
 // ── Paragraph model ───────────────────────────────────────────────────────────
 class _Para {
   final List<TextSpan> spans;
   final TextAlign align;
   const _Para({required this.spans, required this.align});
 }
+
 // ── Completion Dialog Widget ──────────────────────────────────────────────────
 class _CompletionDialog extends StatelessWidget {
   final String storyType;
@@ -384,7 +429,10 @@ class _CompletionDialog extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: onContinue,
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.pop(context);
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.inkMaroon,
                   padding: const EdgeInsets.symmetric(vertical: 14),
@@ -408,6 +456,428 @@ class _CompletionDialog extends StatelessWidget {
     );
   }
 }
+
+// ── Comments Modal Widget ─────────────────────────────────────────────────────
+class _CommentsModal extends StatefulWidget {
+  final String storyId;
+  final _ReadTheme theme;
+
+  const _CommentsModal({
+    required this.storyId,
+    required this.theme,
+  });
+
+  @override
+  State<_CommentsModal> createState() => _CommentsModalState();
+}
+
+class _CommentsModalState extends State<_CommentsModal> {
+  final TextEditingController _commentController = TextEditingController();
+  bool _isPosting = false;
+
+  @override
+  void dispose() {
+    _commentController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _postComment() async {
+    final text = _commentController.text.trim();
+    if (text.isEmpty) return;
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please sign in to comment')),
+      );
+      return;
+    }
+
+    setState(() => _isPosting = true);
+
+    try {
+      // Get username from user profile or use email
+      final userData = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      final username = userData.data()?['username'] ?? user.email?.split('@').first ?? 'Anonymous';
+
+      await FirebaseFirestore.instance
+          .collection('stories')
+          .doc(widget.storyId)
+          .collection('comments')
+          .add({
+        'userId': user.uid,
+        'username': username,
+        'text': text,
+        'timestamp': FieldValue.serverTimestamp(),
+        'likes': 0,
+      });
+
+      _commentController.clear();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Comment posted!')),
+      );
+    } catch (e) {
+      debugPrint('Error posting comment: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error posting comment: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isPosting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: widget.theme.bg,
+      child: Column(
+        children: [
+          // Header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+            child: Row(
+              children: [
+                Text(
+                  'Comments',
+                  style: GoogleFonts.manrope(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: widget.theme.text,
+                  ),
+                ),
+                const Spacer(),
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Icon(Icons.close, color: widget.theme.text),
+                ),
+              ],
+            ),
+          ),
+          Divider(color: widget.theme.border, height: 1),
+
+          // Comments list
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('stories')
+                  .doc(widget.storyId)
+                  .collection('comments')
+                  .orderBy('timestamp', descending: true)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text('Error loading comments: ${snapshot.error}'),
+                  );
+                }
+
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                final comments = snapshot.data?.docs ?? [];
+
+                if (comments.isEmpty) {
+                  return Center(
+                    child: Text(
+                      'No comments yet. Be the first!',
+                      style: GoogleFonts.manrope(
+                        color: widget.theme.muted,
+                      ),
+                    ),
+                  );
+                }
+
+                return ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: comments.length,
+                  itemBuilder: (context, index) {
+                    final doc = comments[index];
+                    final comment = Comment.fromMap(doc.id, doc.data() as Map<String, dynamic>);
+                    return _CommentTile(
+                      comment: comment,
+                      theme: widget.theme,
+                      storyId: widget.storyId,
+                      commentId: doc.id,
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+
+          // Comment input
+          Container(
+            decoration: BoxDecoration(
+              color: widget.theme.surface,
+              border: Border(top: BorderSide(color: widget.theme.border)),
+            ),
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: _commentController,
+                  maxLines: null,
+                  maxLength: 500,
+                  enabled: !_isPosting,
+                  style: GoogleFonts.manrope(color: widget.theme.text),
+                  decoration: InputDecoration(
+                    hintText: 'Share your thoughts...',
+                    hintStyle: GoogleFonts.manrope(color: widget.theme.muted),
+                    filled: true,
+                    fillColor: widget.theme.bg,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: widget.theme.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: widget.theme.border),
+                    ),
+                    contentPadding: const EdgeInsets.all(12),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _isPosting ? null : _postComment,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.inkMaroon,
+                      disabledBackgroundColor: AppTheme.inkMaroon.withValues(alpha: 0.5),
+                    ),
+                    child: _isPosting
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation(Colors.white),
+                            ),
+                          )
+                        : Text(
+                            'Post Comment',
+                            style: GoogleFonts.manrope(
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Comment Tile Widget ───────────────────────────────────────────────────────
+class _CommentTile extends StatefulWidget {
+  final Comment comment;
+  final _ReadTheme theme;
+  final String storyId;
+  final String commentId;
+
+  const _CommentTile({
+    required this.comment,
+    required this.theme,
+    required this.storyId,
+    required this.commentId,
+  });
+
+  @override
+  State<_CommentTile> createState() => _CommentTileState();
+}
+
+class _CommentTileState extends State<_CommentTile> {
+  bool _isLiking = false;
+
+  Future<void> _toggleLike() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    setState(() => _isLiking = true);
+
+    try {
+      final docRef = FirebaseFirestore.instance
+          .collection('stories')
+          .doc(widget.storyId)
+          .collection('comments')
+          .doc(widget.commentId)
+          .collection('likes')
+          .doc(user.uid);
+
+      final exists = await docRef.get();
+      if (exists.exists) {
+        await docRef.delete();
+      } else {
+        await docRef.set({'timestamp': FieldValue.serverTimestamp()});
+      }
+    } catch (e) {
+      debugPrint('Error toggling like: $e');
+    } finally {
+      if (mounted) setState(() => _isLiking = false);
+    }
+  }
+
+  Future<void> _deleteComment() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || user.uid != widget.comment.userId) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Comment'),
+        content: const Text('Are you sure you want to delete this comment?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('stories')
+          .doc(widget.storyId)
+          .collection('comments')
+          .doc(widget.commentId)
+          .delete();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Comment deleted')),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error deleting comment: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    final isOwner = user?.uid == widget.comment.userId;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: widget.theme.card,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: widget.theme.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header with name and time
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.comment.username,
+                      style: GoogleFonts.manrope(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: widget.theme.text,
+                      ),
+                    ),
+                    Text(
+                      DateFormat('MMM d, yyyy • h:mm a').format(widget.comment.timestamp),
+                      style: GoogleFonts.manrope(
+                        fontSize: 11,
+                        color: widget.theme.muted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (isOwner)
+                GestureDetector(
+                  onTap: _deleteComment,
+                  child: Icon(
+                    Icons.delete_outline,
+                    size: 16,
+                    color: widget.theme.muted.withValues(alpha: 0.6),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Comment text
+          Text(
+            widget.comment.text,
+            style: GoogleFonts.manrope(
+              fontSize: 13,
+              color: widget.theme.text,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Like button
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('stories')
+                .doc(widget.storyId)
+                .collection('comments')
+                .doc(widget.commentId)
+                .collection('likes')
+                .snapshots(),
+            builder: (context, snapshot) {
+              final likeCount = snapshot.data?.docs.length ?? 0;
+              final userLiked = snapshot.data?.docs
+                  .any((doc) => doc.id == user?.uid) ?? false;
+
+              return GestureDetector(
+                onTap: _isLiking ? null : _toggleLike,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      userLiked ? Icons.favorite : Icons.favorite_border,
+                      size: 14,
+                      color: userLiked
+                          ? AppTheme.inkMaroon
+                          : widget.theme.muted,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      likeCount > 0 ? '$likeCount' : 'Like',
+                      style: GoogleFonts.manrope(
+                        fontSize: 11,
+                        color: userLiked
+                            ? AppTheme.inkMaroon
+                            : widget.theme.muted,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ── Screen ────────────────────────────────────────────────────────────────────
 class StoryReadScreen extends StatefulWidget {
   final Map<String, dynamic> story;
@@ -418,6 +888,7 @@ class StoryReadScreen extends StatefulWidget {
   @override
   State<StoryReadScreen> createState() => _StoryReadScreenState();
 }
+
 class _StoryReadScreenState extends State<StoryReadScreen>
     with SingleTickerProviderStateMixin {
   int _themeIndex = 0;
@@ -429,10 +900,12 @@ class _StoryReadScreenState extends State<StoryReadScreen>
   bool _hasShowedCompletion = false;
   bool _reachedEnd = false;
   ReadingStatus _readingStatus = ReadingStatus.notStarted;
+  bool _isLiked = false;
+  int _likeCount = 0;
   final ScrollController _scrollCtrl = ScrollController();
   late AnimationController _panelAnim;
   late Animation<double> _panelSlide;
-  // ── Chapter state ─────────────────────────────────────
+  // ── Chapter state ─────────────────────────────
   String _currentContent = '';
   String _currentTitle = '';
   int _currentChapterNum = 0; // Novel: Prologue = 0, then 1,2,...
@@ -459,8 +932,101 @@ class _StoryReadScreenState extends State<StoryReadScreen>
         widget.story['content'] ?? widget.story['body'] ?? 'No content available.';
     _loadTotalChapters();
     _initializeReadingProgress();
+    _loadLikeStatus();
     _scrollCtrl.addListener(_onScroll);
   }
+
+  /// Load like status for this story
+  Future<void> _loadLikeStatus() async {
+    final user = FirebaseAuth.instance.currentUser;
+    final storyId = widget.story['storyId'] as String? ?? '';
+    if (storyId.isEmpty) return;
+
+    try {
+      // Get total likes - fetch all documents to count (safer approach)
+      final likeSnap = await FirebaseFirestore.instance
+          .collection('stories')
+          .doc(storyId)
+          .collection('likes')
+          .get();
+      
+      final totalLikes = likeSnap.docs.length;
+
+      // Check if current user liked
+      bool userLiked = false;
+      if (user != null) {
+        final userLikeSnap = await FirebaseFirestore.instance
+            .collection('stories')
+            .doc(storyId)
+            .collection('likes')
+            .doc(user.uid)
+            .get();
+        userLiked = userLikeSnap.exists;
+      }
+
+      if (mounted) {
+        setState(() {
+          _likeCount = totalLikes;
+          _isLiked = userLiked;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading like status: $e');
+      // Set defaults on error
+      if (mounted) {
+        setState(() {
+          _likeCount = 0;
+          _isLiked = false;
+        });
+      }
+    }
+  }
+
+  /// Toggle like status
+  Future<void> _toggleLike() async {
+    final user = FirebaseAuth.instance.currentUser;
+    final storyId = widget.story['storyId'] as String? ?? '';
+    
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please sign in to like stories')),
+      );
+      return;
+    }
+
+    if (storyId.isEmpty) return;
+
+    try {
+      final likeRef = FirebaseFirestore.instance
+          .collection('stories')
+          .doc(storyId)
+          .collection('likes')
+          .doc(user.uid);
+
+      if (_isLiked) {
+        await likeRef.delete();
+        setState(() {
+          _isLiked = false;
+          _likeCount = (_likeCount - 1).clamp(0, 999999);
+        });
+      } else {
+        await likeRef.set({
+          'timestamp': FieldValue.serverTimestamp(),
+          'username': user.email?.split('@').first ?? 'Anonymous',
+        });
+        setState(() {
+          _isLiked = true;
+          _likeCount++;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error toggling like: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
+  }
+
   /// Initialize reading progress - mark as "in_progress" on first open
   Future<void> _initializeReadingProgress() async {
     final storyId = widget.story['storyId'] as String? ?? '';
@@ -525,28 +1091,28 @@ class _StoryReadScreenState extends State<StoryReadScreen>
   }
 
   Future<int?> _getLastPublishedChapterNumber() async {
-  final storyId = widget.story['storyId'] as String? ?? '';
+    final storyId = widget.story['storyId'] as String? ?? '';
 
-  if (storyId.isEmpty) return null;
+    if (storyId.isEmpty) return null;
 
-  try {
-    final snap = await FirebaseFirestore.instance
-        .collection('stories')
-        .doc(storyId)
-        .collection('chapters')
-        .where('isPublished', isEqualTo: true)
-        .orderBy('chapterNumber', descending: true)
-        .limit(1)
-        .get();
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('stories')
+          .doc(storyId)
+          .collection('chapters')
+          .where('isPublished', isEqualTo: true)
+          .orderBy('chapterNumber', descending: true)
+          .limit(1)
+          .get();
 
-    if (snap.docs.isEmpty) return null;
+      if (snap.docs.isEmpty) return null;
 
-    return snap.docs.first.data()['chapterNumber'] as int?;
-  } catch (e) {
-    debugPrint('Error getting last chapter: $e');
-    return null;
+      return snap.docs.first.data()['chapterNumber'] as int?;
+    } catch (e) {
+      debugPrint('Error getting last chapter: $e');
+      return null;
+    }
   }
-}
 
   Future<void> _jumpToChapterPreferingPrologue() async {
     final storyId = widget.story['storyId'] as String? ?? '';
@@ -943,6 +1509,28 @@ class _StoryReadScreenState extends State<StoryReadScreen>
       _panelAnim.reverse();
     }
   }
+
+  void _openCommentsModal() {
+    final storyId = widget.story['storyId'] as String? ?? '';
+    if (storyId.isEmpty) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Story ID not found')));
+      return;
+    }
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: _theme.bg,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => SizedBox(
+        height: MediaQuery.of(context).size.height * 0.9,
+        child: _CommentsModal(storyId: storyId, theme: _theme),
+      ),
+    );
+  }
+
   // ── Top bar icon button ───────────────────────────────
   Widget _iconBtn({
     required Widget child,
@@ -1017,6 +1605,23 @@ class _StoryReadScreenState extends State<StoryReadScreen>
                     Row(
                       children: [
                         const SizedBox(width: 8),
+                        // Like button
+                        _iconBtn(
+                          onTap: _toggleLike,
+                          child: Icon(
+                            _isLiked ? Icons.favorite : Icons.favorite_border,
+                            size: 18,
+                            color: _isLiked ? AppTheme.inkMaroon : _theme.text,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // Comments button
+                        _iconBtn(
+                          onTap: _openCommentsModal,
+                          child: Icon(Icons.comment_outlined,
+                              size: 18, color: _theme.text),
+                        ),
+                        const SizedBox(width: 8),
                         // Chapters (novel only)
                         if (isNovel) ...[
                           _iconBtn(
@@ -1088,8 +1693,12 @@ class _StoryReadScreenState extends State<StoryReadScreen>
                                 ),
                               ),
                             const SizedBox(height: 10),
-                            // Word count + read time
-                            _StoryStats(story: widget.story, theme: _theme),
+                            // Word count + read time + engagement
+                            _StoryStats(
+                              story: widget.story,
+                              theme: _theme,
+                              likeCount: _likeCount,
+                            ),
                           ],
                         ),
                       ),
@@ -1268,7 +1877,12 @@ class _StoryReadScreenState extends State<StoryReadScreen>
 class _StoryStats extends StatelessWidget {
   final Map<String, dynamic> story;
   final _ReadTheme theme;
-  const _StoryStats({required this.story, required this.theme});
+  final int likeCount;
+  const _StoryStats({
+    required this.story,
+    required this.theme,
+    this.likeCount = 0,
+  });
   int _wordCount(String content) {
     try {
       final decoded = jsonDecode(content);
@@ -1311,6 +1925,25 @@ class _StoryStats extends StatelessWidget {
           '$minutes min read',
           style: GoogleFonts.manrope(fontSize: 12, color: theme.muted),
         ),
+        if (likeCount > 0) ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            child: Container(
+                width: 3,
+                height: 3,
+                decoration: BoxDecoration(color: theme.muted, shape: BoxShape.circle)),
+          ),
+          Icon(Icons.favorite, size: 13, color: AppTheme.inkMaroon),
+          const SizedBox(width: 4),
+          Text(
+            '$likeCount',
+            style: GoogleFonts.manrope(
+              fontSize: 12,
+              color: theme.muted,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ],
     );
   }

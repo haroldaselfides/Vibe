@@ -104,13 +104,7 @@ class NotificationsSettingsScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 28),
                 _buildSectionTitle('Email Notifications'),
-                const SizedBox(height: 12),
-                _buildToggleTile(
-                  icon: Icons.email_outlined,
-                  title: 'Weekly Digest',
-                  subtitle: 'Receive a weekly summary of new stories',
-                  initialValue: false,
-                ),
+              
                 _buildToggleTile(
                   icon: Icons.person_add_outlined,
                   title: 'New Followers',
