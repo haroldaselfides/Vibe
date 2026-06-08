@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../theme/new_app_theme.dart';
-import '../pages/writer.dart'; // adjust path as needed
+import '../pages/writer.dart';
 import '../theme/app_typography.dart';
 
 // Cover art background colors (not in AppTheme, kept local)
@@ -71,64 +71,17 @@ class _ExploreScreenState extends State<ExploreScreen>
       String storyId, Map<String, dynamic> storyData) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            backgroundColor: AppTheme.surfaceColor,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            icon: Icon(
-              Icons.login_outlined,
-              color: AppTheme.inkMaroon,
-              size: 48,
-            ),
-            title: Text(
-              'Login Required',
-              style: AppTypography.headingSm.copyWith(
-                color: AppTheme.inkEspresso,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            content: Text(
-              'Please log in to save stories',
-              style: AppTypography.bodyMd.copyWith(
-                color: AppTheme.inkUmber,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text(
-                  'Cancel',
-                  style: AppTypography.labelMd.copyWith(
-                    color: AppTheme.inkMaroon,
-                  ),
-                ),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  Navigator.of(context).pushNamed('/login');
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.inkMaroon,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                ),
-                child: Text(
-                  'Go to Login',
-                  style: AppTypography.labelMd.copyWith(
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ],
-          );
-        },
+      _showDialog(
+        icon: Icon(Icons.login_outlined, color: AppTheme.inkMaroon, size: 48),
+        title: 'Login Required',
+        content: 'Please log in to save stories',
+        actions: [
+          _dialogTextButton('Cancel', () => Navigator.of(context).pop()),
+          _dialogElevatedButton('Go to Login', () {
+            Navigator.of(context).pop();
+            Navigator.of(context).pushNamed('/login');
+          }),
+        ],
       );
       return;
     }
@@ -152,46 +105,11 @@ class _ExploreScreenState extends State<ExploreScreen>
       if (alreadySaved) {
         await ref.delete();
         if (mounted) {
-          showDialog(
-            context: context,
-            builder: (BuildContext context) {
-              return AlertDialog(
-                backgroundColor: AppTheme.surfaceColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                icon: Icon(
-                  Icons.bookmark_outline,
-                  color: AppTheme.inkMaroon,
-                  size: 48,
-                ),
-                title: Text(
-                  'Removed',
-                  style: AppTypography.headingSm.copyWith(
-                    color: AppTheme.inkEspresso,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                content: Text(
-                  'Story removed from Library',
-                  style: AppTypography.bodyMd.copyWith(
-                    color: AppTheme.inkUmber,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: Text(
-                      'OK',
-                      style: AppTypography.labelMd.copyWith(
-                        color: AppTheme.inkMaroon,
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            },
+          _showDialog(
+            icon: Icon(Icons.bookmark_outline, color: AppTheme.inkMaroon, size: 48),
+            title: 'Removed',
+            content: 'Story removed from Library',
+            actions: [_dialogTextButton('OK', () => Navigator.of(context).pop())],
           );
         }
       } else {
@@ -204,50 +122,16 @@ class _ExploreScreenState extends State<ExploreScreen>
           'storyType'      : storyData['storyType']      ?? 'Short Story',
         });
         if (mounted) {
-          showDialog(
-            context: context,
-            builder: (BuildContext context) {
-              return AlertDialog(
-                backgroundColor: AppTheme.surfaceColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                icon: Icon(
-                  Icons.bookmark_rounded,
-                  color: Colors.green,
-                  size: 48,
-                ),
-                title: Text(
-                  'Saved!',
-                  style: AppTypography.headingSm.copyWith(
-                    color: AppTheme.inkEspresso,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                content: Text(
-                  'Story added to Library',
-                  style: AppTypography.bodyMd.copyWith(
-                    color: AppTheme.inkUmber,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: Text(
-                      'OK',
-                      style: AppTypography.labelMd.copyWith(
-                        color: AppTheme.inkMaroon,
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            },
+          _showDialog(
+            icon: Icon(Icons.bookmark_rounded, color: Colors.green, size: 48),
+            title: 'Saved!',
+            content: 'Story added to Library',
+            actions: [_dialogTextButton('OK', () => Navigator.of(context).pop())],
           );
         }
       }
     } catch (e) {
+      // Revert optimistic update on error
       setState(() {
         if (alreadySaved) {
           _savedStoryIds.add(storyId);
@@ -259,11 +143,64 @@ class _ExploreScreenState extends State<ExploreScreen>
     }
   }
 
+  // ── Shared dialog helper ───────────────────────────────────────────────────
+
+  void _showDialog({
+    required Widget icon,
+    required String title,
+    required String content,
+    required List<Widget> actions,
+  }) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: AppTheme.surfaceColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        icon: icon,
+        title: Text(
+          title,
+          style: AppTypography.headingSm.copyWith(color: AppTheme.inkEspresso),
+          textAlign: TextAlign.center,
+        ),
+        content: Text(
+          content,
+          style: AppTypography.bodyMd.copyWith(color: AppTheme.inkUmber),
+          textAlign: TextAlign.center,
+        ),
+        actions: actions,
+      ),
+    );
+  }
+
+  Widget _dialogTextButton(String label, VoidCallback onPressed) {
+    return TextButton(
+      onPressed: onPressed,
+      child: Text(
+        label,
+        style: AppTypography.labelMd.copyWith(color: AppTheme.inkMaroon),
+      ),
+    );
+  }
+
+  Widget _dialogElevatedButton(String label, VoidCallback onPressed) {
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppTheme.inkMaroon,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      ),
+      child: Text(
+        label,
+        style: AppTypography.labelMd.copyWith(color: Colors.white),
+      ),
+    );
+  }
+
   // ── Root ───────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
-    super.build(context); // required by AutomaticKeepAliveClientMixin
+    super.build(context);
     return Scaffold(
       backgroundColor: AppTheme.surfaceColor,
       body: Column(
@@ -312,17 +249,17 @@ class _ExploreScreenState extends State<ExploreScreen>
                 children: [
                   Text(
                     'Explore',
-                      style: AppTypography.headingLg.copyWith(
-                        color: Colors.white,
-                        fontSize: 26,
-                      )
+                    style: AppTypography.headingLg.copyWith(
+                      color   : Colors.white,
+                      fontSize: 26,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     'Discover stories and writers',
                     style: AppTypography.bodySm.copyWith(
-                    color: Colors.white.withValues(alpha: 0.75),
-                  ),
+                      color: Colors.white.withValues(alpha: 0.75),
+                    ),
                   ),
                 ],
               ),
@@ -344,10 +281,10 @@ class _ExploreScreenState extends State<ExploreScreen>
               onChanged: (v) =>
                   setState(() => _searchQuery = v.trim().toLowerCase()),
               decoration: InputDecoration(
-                hintText      : _isSearchingStories
+                hintText  : _isSearchingStories
                     ? 'Search stories...'
                     : 'Search writers...',
-                prefixIcon    : const Icon(Icons.search,
+                prefixIcon: const Icon(Icons.search,
                     color: AppTheme.inkUmber, size: 20),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
@@ -359,15 +296,13 @@ class _ExploreScreenState extends State<ExploreScreen>
                         },
                       )
                     : null,
-                border        : InputBorder.none,
-                isDense       : true,
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 12),
-                hintStyle     : AppTypography.bodyMd.copyWith(
+                border         : InputBorder.none,
+                isDense        : true,
+                contentPadding : const EdgeInsets.symmetric(horizontal: 12),
+                hintStyle      : AppTypography.bodyMd.copyWith(
                     color: AppTheme.inkUmber.withOpacity(0.6)),
               ),
-              style: AppTypography.bodyMd
-                  .copyWith(color: AppTheme.inkEspresso),
+              style: AppTypography.bodyMd.copyWith(color: AppTheme.inkEspresso),
             ),
           ),
         ],
@@ -413,8 +348,8 @@ class _ExploreScreenState extends State<ExploreScreen>
           child: Text(
             label,
             style: AppTypography.labelMd.copyWith(
-              color     : active ? AppTheme.inkCanvas : AppTheme.inkUmber,
-              fontSize  : 14,
+              color   : active ? AppTheme.inkCanvas : AppTheme.inkUmber,
+              fontSize: 14,
             ),
           ),
         ),
@@ -435,15 +370,14 @@ class _ExploreScreenState extends State<ExploreScreen>
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.auto_stories_outlined,
-              size: 64,
+              size : 64,
               color: AppTheme.inkUmber.withOpacity(0.25)),
           const SizedBox(height: 16),
           Text(
             _isSearchingStories
                 ? 'Search for your next favorite story'
                 : 'Search for writers to follow',
-            style: AppTypography.bodyMd
-                .copyWith(color: AppTheme.inkUmber),
+            style: AppTypography.bodyMd.copyWith(color: AppTheme.inkUmber),
           ),
         ],
       ),
@@ -456,7 +390,6 @@ class _ExploreScreenState extends State<ExploreScreen>
     return StreamBuilder<QuerySnapshot>(
       stream: _storiesStreamCache,
       builder: (context, snapshot) {
-        // Cache the snapshot so we never flash back to a spinner
         if (snapshot.hasData) _cachedStoriesSnapshot = snapshot.data;
         if (_cachedStoriesSnapshot == null) {
           return const Center(
@@ -465,8 +398,10 @@ class _ExploreScreenState extends State<ExploreScreen>
 
         final docs = _cachedStoriesSnapshot!.docs.where((doc) {
           final data  = doc.data() as Map<String, dynamic>? ?? {};
+          if (data.isEmpty) return false;
           final title = (data['title'] ?? '').toString().toLowerCase();
-          return title.contains(_searchQuery);
+          final genre = (data['genre']  ?? '').toString().toLowerCase();
+          return title.contains(_searchQuery) || genre.contains(_searchQuery);
         }).toList();
 
         if (docs.isEmpty) {
@@ -475,12 +410,11 @@ class _ExploreScreenState extends State<ExploreScreen>
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.search_off_outlined,
-                    size: 52,
+                    size : 52,
                     color: AppTheme.inkUmber.withValues(alpha: 0.25)),
                 const SizedBox(height: 12),
                 Text('No stories found',
-                    style: AppTypography.bodyMd
-                        .copyWith(color: AppTheme.inkUmber)),
+                    style: AppTypography.bodyMd.copyWith(color: AppTheme.inkUmber)),
                 const SizedBox(height: 4),
                 Text('Try a different title or genre',
                     style: AppTypography.bodySm.copyWith(
@@ -534,12 +468,12 @@ class _ExploreScreenState extends State<ExploreScreen>
     final data           = doc.data() as Map<String, dynamic>;
     final storyId        = doc.id;
     final isSaved        = _savedStoryIds.contains(storyId);
-    final title          = data['title']          as String? ?? 'Untitled';
-    final genre          = data['genre']          as String? ?? '';
-    final storyType      = data['storyType']      as String? ?? 'Short Story';
+    final title          = (data['title']     as String?) ?? 'Untitled';
+    final genre          = (data['genre']     as String?) ?? '';
+    final storyType      = (data['storyType'] as String?) ?? 'Short Story';
     final progress       = (data['progress']      as num?)?.toDouble() ?? 0.0;
-    final currentChapter = data['currentChapter'] as int?    ?? 0;
-    final totalChapters  = data['totalChapters']  as int?    ?? 0;
+    final currentChapter = (data['currentChapter'] as int?) ?? 0;
+    final totalChapters  = (data['totalChapters']  as int?) ?? 0;
     final isInProgress   = progress > 0 || currentChapter > 0;
     final coverColor     = index.isEven ? _coverTeal : _coverSand;
 
@@ -549,8 +483,7 @@ class _ExploreScreenState extends State<ExploreScreen>
         decoration: BoxDecoration(
           color        : AppTheme.surfaceColor,
           borderRadius : BorderRadius.circular(AppTheme.radiusMd),
-          border       : Border.all(
-              color: AppTheme.borderColor, width: 0.5),
+          border       : Border.all(color: AppTheme.borderColor, width: 0.5),
         ),
         clipBehavior: Clip.antiAlias,
         child: Column(
@@ -593,8 +526,8 @@ class _ExploreScreenState extends State<ExploreScreen>
                       color     : AppTheme.inkEspresso,
                       fontSize  : 13,
                     ),
-                    maxLines : 1,
-                    overflow : TextOverflow.ellipsis,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
 
@@ -602,8 +535,8 @@ class _ExploreScreenState extends State<ExploreScreen>
                     genre.isNotEmpty ? '$genre · $storyType' : storyType,
                     style: AppTypography.labelSm.copyWith(
                         color: AppTheme.inkUmber),
-                    maxLines : 1,
-                    overflow : TextOverflow.ellipsis,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 8),
 
@@ -625,8 +558,8 @@ class _ExploreScreenState extends State<ExploreScreen>
                         ]),
                         Text(
                           '${progress.toInt()}%',
-                          style: AppTypography.captionBold.copyWith(
-                              color: AppTheme.inkMaroon),
+                          style: AppTypography.captionBold
+                              .copyWith(color: AppTheme.inkMaroon),
                         ),
                       ],
                     ),
@@ -665,8 +598,8 @@ class _ExploreScreenState extends State<ExploreScreen>
                               side           : BorderSide(
                                   color: AppTheme.inkMaroon, width: 1),
                               shape          : RoundedRectangleBorder(
-                                  borderRadius:
-                                      BorderRadius.circular(AppTheme.radiusXs)),
+                                  borderRadius: BorderRadius.circular(
+                                      AppTheme.radiusXs)),
                               backgroundColor:
                                   AppTheme.inkMaroon.withValues(alpha: 0.06),
                             ),
@@ -688,8 +621,8 @@ class _ExploreScreenState extends State<ExploreScreen>
                               backgroundColor: AppTheme.inkMaroon,
                               elevation      : 0,
                               shape          : RoundedRectangleBorder(
-                                  borderRadius:
-                                      BorderRadius.circular(AppTheme.radiusXs)),
+                                  borderRadius: BorderRadius.circular(
+                                      AppTheme.radiusXs)),
                             ),
                           ),
                   ),
@@ -759,7 +692,6 @@ class _ExploreScreenState extends State<ExploreScreen>
     return StreamBuilder<QuerySnapshot>(
       stream: _usersStreamCache,
       builder: (context, snapshot) {
-        // Cache snapshot — never flash back to spinner once data is loaded
         if (snapshot.hasData) _cachedUsersSnapshot = snapshot.data;
         if (_cachedUsersSnapshot == null) {
           return const Center(
@@ -775,22 +707,31 @@ class _ExploreScreenState extends State<ExploreScreen>
           // Skip the currently logged-in user
           if (doc.id == currentUid) return false;
 
-          // Handle isPublic safely regardless of stored type
+          // ── FIX: parse isPublic robustly from any stored type ──
+          // Treat missing field as public (default true)
           final rawPublic = data['isPublic'];
-          final isPublic  = rawPublic == null
-              ? true
-              : rawPublic is bool
-                  ? rawPublic
-                  : rawPublic.toString().toLowerCase() == 'true';
+          bool isPublic;
+          if (rawPublic == null) {
+            isPublic = true; // field missing → treat as public
+          } else if (rawPublic is bool) {
+            isPublic = rawPublic;
+          } else if (rawPublic is int) {
+            isPublic = rawPublic != 0;
+          } else {
+            isPublic = rawPublic.toString().toLowerCase() == 'true';
+          }
+
+          // Only show public profiles in search results
           if (!isPublic) return false;
 
+          // ── FIX: search displayName, username, bio — not email ──
           final name     = (data['displayName'] ?? '').toString().toLowerCase();
           final username = (data['username']    ?? '').toString().toLowerCase();
-          final email    = (data['email']       ?? '').toString().toLowerCase();
+          final bio      = (data['bio']         ?? '').toString().toLowerCase();
 
           return name.contains(_searchQuery)
               || username.contains(_searchQuery)
-              || email.contains(_searchQuery);
+              || bio.contains(_searchQuery);
         }).toList();
 
         if (docs.isEmpty) {
@@ -799,12 +740,11 @@ class _ExploreScreenState extends State<ExploreScreen>
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.person_search_outlined,
-                    size: 52,
+                    size : 52,
                     color: AppTheme.inkUmber.withValues(alpha: 0.25)),
                 const SizedBox(height: 12),
                 Text('No writers found',
-                    style: AppTypography.bodyMd
-                        .copyWith(color: AppTheme.inkUmber)),
+                    style: AppTypography.bodyMd.copyWith(color: AppTheme.inkUmber)),
                 const SizedBox(height: 4),
                 Text('Try a different name or username',
                     style: AppTypography.bodySm.copyWith(
@@ -821,14 +761,24 @@ class _ExploreScreenState extends State<ExploreScreen>
               Divider(color: AppTheme.borderColor, height: 1),
           itemBuilder: (context, index) {
             final data        = docs[index].data() as Map<String, dynamic>;
-            final photoUrl    = data['photoUrl']    as String?;
-            final isPublic    = (data['isPublic']   as bool?) ?? true;
+            final photoUrl    = data['photoUrl'] as String?;
+
+            // ── FIX: resolve isPublic the same robust way ──
+            final rawPublic = data['isPublic'];
+            final isPublic  = rawPublic == null
+                ? true
+                : rawPublic is bool
+                    ? rawPublic
+                    : rawPublic is int
+                        ? rawPublic != 0
+                        : rawPublic.toString().toLowerCase() == 'true';
+
             final displayName =
                 (data['displayName'] as String?)?.trim().isNotEmpty == true
                     ? data['displayName'] as String
                     : 'Writer';
             final username = (data['username'] as String?)?.trim() ?? '';
-            final email    = (data['email']    as String?)?.trim() ?? '';
+            final bio      = (data['bio']      as String?)?.trim() ?? '';
 
             return ListTile(
               contentPadding: EdgeInsets.zero,
@@ -836,20 +786,34 @@ class _ExploreScreenState extends State<ExploreScreen>
                 radius         : 22,
                 backgroundColor: AppTheme.inkBgCard,
                 backgroundImage: (photoUrl != null && photoUrl.isNotEmpty)
-                    ? NetworkImage(photoUrl) : null,
+                    ? NetworkImage(photoUrl)
+                    : null,
                 child: (photoUrl == null || photoUrl.isEmpty)
                     ? Text(
                         displayName.isNotEmpty
-                            ? displayName[0].toUpperCase() : '?',
+                            ? displayName[0].toUpperCase()
+                            : '?',
                         style: AppTypography.labelMd
                             .copyWith(color: AppTheme.inkUmber),
                       )
                     : null,
               ),
               title: Text(displayName, style: AppTypography.authorName),
-              subtitle: Text(
-                username.isNotEmpty ? '@$username' : email,
-                style: AppTypography.authorMeta,
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (username.isNotEmpty)
+                    Text('@$username', style: AppTypography.authorMeta),
+                  if (bio.isNotEmpty)
+                    Text(
+                      bio,
+                      style: AppTypography.bodySm.copyWith(
+                          color: AppTheme.inkUmber.withOpacity(0.7)),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                ],
               ),
               trailing: !isPublic
                   ? Icon(Icons.lock_outline,
@@ -860,50 +824,20 @@ class _ExploreScreenState extends State<ExploreScreen>
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => WriterProfileScreen(userId: docs[index].id),
+                      builder: (_) =>
+                          WriterProfileScreen(userId: docs[index].id),
                     ),
                   );
                 } else {
-                  showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return AlertDialog(
-                        backgroundColor: AppTheme.surfaceColor,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        icon: Icon(
-                          Icons.lock_outline,
-                          color: AppTheme.inkMaroon,
-                          size: 48,
-                        ),
-                        title: Text(
-                          'Profile Private',
-                          style: AppTypography.headingSm.copyWith(
-                            color: AppTheme.inkEspresso,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        content: Text(
-                          'This profile is private',
-                          style: AppTypography.bodyMd.copyWith(
-                            color: AppTheme.inkUmber,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(),
-                            child: Text(
-                              'OK',
-                              style: AppTypography.labelMd.copyWith(
-                                color: AppTheme.inkMaroon,
-                              ),
-                            ),
-                          ),
-                        ],
-                      );
-                    },
+                  _showDialog(
+                    icon: Icon(Icons.lock_outline,
+                        color: AppTheme.inkMaroon, size: 48),
+                    title: 'Profile Private',
+                    content: 'This profile is private',
+                    actions: [
+                      _dialogTextButton(
+                          'OK', () => Navigator.of(context).pop()),
+                    ],
                   );
                 }
               },
