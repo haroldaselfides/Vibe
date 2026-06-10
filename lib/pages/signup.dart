@@ -870,7 +870,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (BuildContext context) {
+      builder: (BuildContext dialogContext) {
         return AlertDialog(
           backgroundColor: AppTheme.surfaceColor,
           shape: RoundedRectangleBorder(
@@ -915,11 +915,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
           actions: [
             TextButton(
               onPressed: () {
-                final navigator = Navigator.of(context);
+                final navigator = Navigator.of(dialogContext);
                 navigator.pop();
-                if (context.mounted) {
-                  navigator.pushNamed('/login');
-                }
+                navigator.pushNamed('/login');
               },
               style: TextButton.styleFrom(
                 foregroundColor: AppTheme.inkUmber,
@@ -936,9 +934,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
               onPressed: () async {
                 try {
                   await _authService.sendEmailVerification();
-                  if (context.mounted) {
+                  if (dialogContext.mounted) {
                     showDialog(
-                      context: context,
+                      context: dialogContext,
                       builder: (BuildContext context) {
                         return AlertDialog(
                           backgroundColor: AppTheme.surfaceColor,
@@ -981,9 +979,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     );
                   }
                 } catch (e) {
-                  if (mounted) {
+                  if (dialogContext.mounted) {
                     showDialog(
-                      context: context,
+                      context: dialogContext,
                       builder: (BuildContext context) {
                         return AlertDialog(
                           backgroundColor: AppTheme.surfaceColor,

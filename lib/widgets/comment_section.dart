@@ -83,7 +83,7 @@ class _CommentsSectionState extends State<CommentsSection> {
     setState(() => _submittingComment = true);
     try {
       final name = await _getDisplayName();
-      final commentDoc = await _commentsRef.add({
+      await _commentsRef.add({
         'text'      : text,
         'userId'    : _currentUid,
         'userName'  : name,
@@ -97,21 +97,29 @@ class _CommentsSectionState extends State<CommentsSection> {
       // Ensure authorId is not empty and is not the person who just commented
       if (widget.authorId.isNotEmpty && widget.authorId != _currentUid) {
         debugPrint('[CommentsSection] Notifying author: ${widget.authorId}');
-        
-        await FirebaseFirestore.instance
+
+        // Check author preferences
+        final authorDoc = await FirebaseFirestore.instance
             .collection('users')
             .doc(widget.authorId)
-            .collection('notifications')
-            .add({
-          'title': 'New Comment',
-          'body': '$name commented on "${widget.storyTitle}": "$text"',
-          'type': 'comment',
-          'timestamp': FieldValue.serverTimestamp(),
-          'isRead': false,
-          'fromId': _currentUid,
-          'storyId': widget.storyId,
-        });
-        debugPrint('[Notification] Comment notification sent to author: ${widget.authorId}');
+            .get();
+        final prefs = authorDoc.data()?['notificationPrefs'] as Map<String, dynamic>? ?? {};
+        if (prefs['comments'] ?? true) {
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(widget.authorId)
+              .collection('notifications')
+              .add({
+            'title': 'New Comment',
+            'body': '$name commented on "${widget.storyTitle}": "$text"',
+            'type': 'comment',
+            'timestamp': FieldValue.serverTimestamp(),
+            'isRead': false,
+            'fromId': _currentUid,
+            'storyId': widget.storyId,
+          });
+          debugPrint('[Notification] Comment notification sent to author: ${widget.authorId}');
+        }
       }
 
       _commentController.clear();
@@ -164,21 +172,29 @@ class _CommentsSectionState extends State<CommentsSection> {
       final parentUserId = parentData?['userId'] as String?;
       if (parentUserId != null && parentUserId != _currentUid) {
         debugPrint('[CommentsSection] Notifying comment owner: $parentUserId');
-        
-        await FirebaseFirestore.instance
+
+        // Check recipient preferences
+        final recipientDoc = await FirebaseFirestore.instance
             .collection('users')
             .doc(parentUserId)
-            .collection('notifications')
-            .add({
-          'title': 'New Reply',
-          'body': '$name replied to your comment: "$text"',
-          'type': 'comment',
-          'timestamp': FieldValue.serverTimestamp(),
-          'isRead': false,
-          'fromId': _currentUid,
-          'storyId': widget.storyId,
-        });
-        debugPrint('[Notification] Reply notification sent to comment owner: $parentUserId');
+            .get();
+        final prefs = recipientDoc.data()?['notificationPrefs'] as Map<String, dynamic>? ?? {};
+        if (prefs['comments'] ?? true) {
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(parentUserId)
+              .collection('notifications')
+              .add({
+            'title': 'New Reply',
+            'body': '$name replied to your comment: "$text"',
+            'type': 'comment',
+            'timestamp': FieldValue.serverTimestamp(),
+            'isRead': false,
+            'fromId': _currentUid,
+            'storyId': widget.storyId,
+          });
+          debugPrint('[Notification] Reply notification sent to comment owner: $parentUserId');
+        }
       }
 
       _replyController.clear();

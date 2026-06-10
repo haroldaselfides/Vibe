@@ -69,8 +69,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
 
     // 2. Navigate if it's a story-related notification
-    final storyId = data['storyId'] as String?;
-    // Robust numeric handling for chapterNumber
+    final storyId = data['storyId'] as String?;    // Robust numeric handling for chapterNumber
     final rawChapterNum = data['chapterNumber'];
     final int? chapterNumber = rawChapterNum is int 
         ? rawChapterNum 
@@ -334,15 +333,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                               child: const Icon(Icons.delete, color: Colors.white),
                             ),
                             onDismissed: (direction) {
+                              final deletedData = Map<String, dynamic>.from(data);
                               _deleteNotification(user.uid, docId);
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                   content: const Text('Notification deleted'),
                                   action: SnackBarAction(
                                     label: 'UNDO',
-                                    onPressed: () {
-                                      // TODO: Implement undo logic if needed (e.g., re-add to Firestore)
-                                      // For now, it's a permanent delete.
+                                    onPressed: () async {
+                                      await FirebaseFirestore.instance
+                                          .collection('users')
+                                          .doc(user.uid)
+                                          .collection('notifications')
+                                          .doc(docId)
+                                          .set(deletedData);
                                     },
                                   ),
                                 ),

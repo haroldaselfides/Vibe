@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:ui' show lerpDouble;
 import 'package:vibewrite_app/theme/new_app_theme.dart';
-import 'package:vibewrite_app/main_tabs/explore.dart';
 import 'package:vibewrite_app/main_tabs/post/post.dart';
 import 'package:vibewrite_app/main_tabs/profile.dart';
 import 'package:vibewrite_app/main_tabs/library.dart';

@@ -219,9 +219,10 @@ class _PostScreenState extends State<PostScreen> {
       }
     } catch (e) {
       debugPrint('Error loading story: $e');
-      if (mounted)
+      if (mounted) {
         _showSnack('Error loading story. Please try again.',
             color: AppTheme.inkMaroon);
+      }
     }
   }
 
@@ -1272,15 +1273,17 @@ class _PostScreenState extends State<PostScreen> {
                 'Horror',
                 'Thriller'
               ];
-              if (!validGenres.contains(_selectedGenre))
+              if (!validGenres.contains(_selectedGenre)) {
                 _selectedGenre = 'Romance';
+              }
               final validContentTypes = [
                 'Prologue',
                 'Chapter',
                 'Epilogue'
               ];
-              if (!validContentTypes.contains(_contentType))
+              if (!validContentTypes.contains(_contentType)) {
                 _contentType = 'Chapter';
+              }
             }
           });
         }

@@ -622,7 +622,6 @@ class _ExploreScreenState extends State<ExploreScreen>
     final coverColor     = index.isEven ? _coverTeal : _coverSand;
 
     return GestureDetector(
-      onTap: () { /* TODO: navigate to story detail */ },
       child: Container(
         decoration: BoxDecoration(
           color        : AppTheme.surfaceColor,

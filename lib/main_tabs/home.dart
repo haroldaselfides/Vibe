@@ -6,8 +6,6 @@ import '../theme/app_typography.dart';
 import 'package:vibewrite_app/main_tabs/post/post.dart';
 import 'package:vibewrite_app/story/read_screen.dart';
 import 'package:vibewrite_app/main_tabs/explore.dart';
-import 'package:vibewrite_app/main_tabs/notifications_screen.dart';
-import 'package:vibewrite_app/main_tabs/settings/notifications_settings.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -25,7 +23,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoadingUserData = true;
 
   final Set<String> _savedStoryIds = {};
-  String _searchQuery = '';
+  final String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
 
   final List<String> _genres = [

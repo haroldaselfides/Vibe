@@ -10,6 +10,7 @@ class FormattingToolbar extends StatelessWidget {
   final VoidCallback? onQuote;
 
   const FormattingToolbar({
+    super.key,
     this.onBold,
     this.onItalic,
     this.onUnderline,
@@ -155,10 +156,7 @@ class TextFormatter {
     // Insert blockquote marker at start of current line
     final lastNewline = beforeCursor.lastIndexOf('\n');
     final lineStart = lastNewline == -1 ? 0 : lastNewline + 1;
-    final newText = beforeCursor.substring(0, lineStart) +
-        '> ' +
-        beforeCursor.substring(lineStart) +
-        afterCursor;
+    final newText = '${beforeCursor.substring(0, lineStart)}> ${beforeCursor.substring(lineStart)}$afterCursor';
     controller.text = newText;
     controller.selection = TextSelection.collapsed(
       offset: cursorPos + 2,
@@ -177,6 +175,7 @@ class StandardEditorContent extends StatelessWidget {
   final Widget metadataBar;
 
   const StandardEditorContent({
+    super.key,
     required this.titleController,
     required this.bodyController,
     required this.bodyFocusNode,
@@ -295,6 +294,7 @@ class NovelEditorContent extends StatelessWidget {
   final String hintText;
 
   const NovelEditorContent({
+    super.key,
     required this.titleController,
     required this.chapterTitleController,
     required this.bodyController,
@@ -465,6 +465,7 @@ class PoetryEditorContent extends StatelessWidget {
   final Widget metadataBar;
 
   const PoetryEditorContent({
+    super.key,
     required this.titleController,
     required this.bodyController,
     required this.bodyFocusNode,

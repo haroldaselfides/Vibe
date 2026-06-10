@@ -535,6 +535,7 @@ class _StoryReadScreenState extends State<StoryReadScreen>
     final storyId = widget.story['storyId'] as String? ?? '';
     
     if (user == null) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please sign in to like stories')),
       );
@@ -600,6 +601,7 @@ class _StoryReadScreenState extends State<StoryReadScreen>
       }
     } catch (e) {
       debugPrint('Error toggling like: $e');
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
       );
@@ -667,30 +669,6 @@ class _StoryReadScreenState extends State<StoryReadScreen>
     }
   }
 
-  Future<int?> _getLastPublishedChapterNumber() async {
-    final storyId = widget.story['storyId'] as String? ?? '';
-
-    if (storyId.isEmpty) return null;
-
-    try {
-      final snap = await FirebaseFirestore.instance
-          .collection('stories')
-          .doc(storyId)
-          .collection('chapters')
-          .where('isPublished', isEqualTo: true)
-          .orderBy('chapterNumber', descending: true)
-          .limit(1)
-          .get();
-
-      if (snap.docs.isEmpty) return null;
-
-      return snap.docs.first.data()['chapterNumber'] as int?;
-    } catch (e) {
-      debugPrint('Error getting last chapter: $e');
-      return null;
-    }
-  }
-
   Future<void> _jumpToChapterPreferingPrologue() async {
     final storyId = widget.story['storyId'] as String? ?? '';
     if (storyId.isEmpty) return;
@@ -705,7 +683,7 @@ class _StoryReadScreenState extends State<StoryReadScreen>
           .get();
       if (proSnap.docs.isNotEmpty) {
         if (mounted) { // Add mounted check
-          final data = proSnap.docs.first.data() as Map<String, dynamic>;
+          final data = proSnap.docs.first.data();
           setState(() {
             _currentChapterNum = 0;
             _currentTitle = data['title'] ?? 'Untitled'; // Use title from data
