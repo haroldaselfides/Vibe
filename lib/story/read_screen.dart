@@ -440,7 +440,6 @@ class _StoryReadScreenState extends State<StoryReadScreen>
   double _readProgress = 0.0; // 0..1 across whole story
   bool _hasShowedCompletion = false;
   bool _reachedEnd = false;
-  ReadingStatus _readingStatus = ReadingStatus.notStarted;
   bool _isLiked = false;
   int _likeCount = 0;
   final ScrollController _scrollCtrl = ScrollController();
@@ -475,6 +474,13 @@ class _StoryReadScreenState extends State<StoryReadScreen>
     _initializeReadingProgress();
     _loadLikeStatus();
     _scrollCtrl.addListener(_onScroll);
+
+    // If opened from a notification specifically for comments
+    if (widget.story['openComments'] == true) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _openCommentsModal();
+      });
+    }
   }
 
   /// Load like status for this story
@@ -555,6 +561,38 @@ class _StoryReadScreenState extends State<StoryReadScreen>
           'timestamp': FieldValue.serverTimestamp(),
           'username': user.email?.split('@').first ?? 'Anonymous',
         });
+
+        // Create a detailed notification for the author
+        final authorId = widget.story['authorId'] as String? ?? '';
+        final storyTitle = widget.story['title'] ?? 'your story';
+
+        if (authorId.isNotEmpty && authorId != user.uid) {
+          // Fetch the current user's profile info to get their display name
+          final userDoc = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .get();
+          final fromName = userDoc.data()?['displayName'] ?? 
+                           userDoc.data()?['username'] ??
+                           user.email?.split('@').first ?? 
+                           'Someone';
+
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(authorId)
+              .collection('notifications')
+              .add({
+            'title': 'New Like!',
+            'body': '$fromName liked your story "$storyTitle"',
+            'type': 'like',
+            'timestamp': FieldValue.serverTimestamp(),
+            'isRead': false,
+            'fromId': user.uid,
+            'storyId': storyId,
+          });
+          debugPrint('[Notification] Like notification sent to author: $authorId');
+        }
+
         setState(() {
           _isLiked = true;
           _likeCount++;
@@ -579,9 +617,7 @@ class _StoryReadScreenState extends State<StoryReadScreen>
         chapterNumber: _currentChapterNum,
         progressPercent: 0.0,
       );
-      if (mounted) {
-        setState(() => _readingStatus = ReadingStatus.inProgress);
-      }
+      // The _readingStatus field was unused, so it has been removed.
     } catch (e) {
       debugPrint('Error initializing reading progress: $e');
     }
@@ -668,30 +704,16 @@ class _StoryReadScreenState extends State<StoryReadScreen>
           .limit(1)
           .get();
       if (proSnap.docs.isNotEmpty) {
-        final data = proSnap.docs.first.data() as Map<String, dynamic>;
-        setState(() {
-          _currentChapterNum = 0;
-          String getChapterTitle(Map<String, dynamic> data) {
-            if ((data['title'] ?? '').toString().trim().isNotEmpty) {
-              return data['title'];
-            }
-
-            final contentType =
-                (data['contentType'] ?? '').toString().toLowerCase();
-
-            switch (contentType) {
-              case 'prologue':
-                return 'Prologue';
-              case 'epilogue':
-                return 'Epilogue';
-              default:
-                return 'Untitled';
-            }
-          }
-          _currentContent = data['content'] ?? data['body'] ?? '';
-          _readProgress = 0.0;
-        });
-        WidgetsBinding.instance.addPostFrameCallback((_) => _scrollCtrl.jumpTo(0));
+        if (mounted) { // Add mounted check
+          final data = proSnap.docs.first.data() as Map<String, dynamic>;
+          setState(() {
+            _currentChapterNum = 0;
+            _currentTitle = data['title'] ?? 'Untitled'; // Use title from data
+            _currentContent = data['content'] ?? data['body'] ?? '';
+            _readProgress = 0.0;
+          });
+          WidgetsBinding.instance.addPostFrameCallback((_) => _scrollCtrl.jumpTo(0));
+        }
       }
     } catch (e) {
       debugPrint('Error jumping to prologue: $e');
@@ -1072,6 +1094,7 @@ class _StoryReadScreenState extends State<StoryReadScreen>
           child: CommentsSection(
             storyId: storyId,
             authorId: authorId,
+            storyTitle: widget.story['title'] ?? 'your story',
           ),
         ),
       ),
@@ -1374,7 +1397,7 @@ class _StoryReadScreenState extends State<StoryReadScreen>
               // ── Reading Settings Panel ────────────────
               SizeTransition(
                 sizeFactor: _panelSlide,
-                axisAlignment: -1,
+                alignment: Alignment.centerLeft, // Replaced deprecated axisAlignment
                 child: _ReadingSettingsPanel(
                   theme: _theme,
                   themeIndex: _themeIndex,
@@ -1388,33 +1411,6 @@ class _StoryReadScreenState extends State<StoryReadScreen>
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-  Widget _engageBtn({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        decoration: BoxDecoration(borderRadius: BorderRadius.circular(8)),
-        child: Row(
-          children: [
-            Icon(icon, size: 16, color: _theme.muted),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: GoogleFonts.manrope(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: _theme.muted,
-              ),
-            ),
-          ],
         ),
       ),
     );

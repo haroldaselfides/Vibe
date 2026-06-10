@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../theme/new_app_theme.dart';
 import '../../theme/app_typography.dart';
 
-class NotificationsSettingsScreen extends StatelessWidget {
+class NotificationsSettingsScreen extends StatefulWidget {
   const NotificationsSettingsScreen({super.key});
+
+  @override
+  State<NotificationsSettingsScreen> createState() => _NotificationsSettingsScreenState();
+}
+
+class _NotificationsSettingsScreenState extends State<NotificationsSettingsScreen> {
 
   Widget _buildHeader(BuildContext context) {
     return SafeArea(
@@ -73,54 +81,58 @@ class NotificationsSettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+
     return Scaffold(
       backgroundColor: AppTheme.surfaceColor,
       body: Column(
         children: [
           _buildHeader(context),
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 24, 16, 32),
-              children: [
-                _buildSectionTitle('Push Notifications'),
-                const SizedBox(height: 12),
-                _buildToggleTile(
-                  icon: Icons.notifications_active_outlined,
-                  title: 'Story Updates',
-                  subtitle: 'Get notified when stories you follow are updated',
-                  initialValue: true,
-                ),
-                _buildToggleTile(
-                  icon: Icons.chat_bubble_outline,
-                  title: 'Comments & Replies',
-                  subtitle: 'Notify when someone comments on your stories',
-                  initialValue: true,
-                ),
-                _buildToggleTile(
-                  icon: Icons.favorite_border,
-                  title: 'Likes & Reactions',
-                  subtitle: 'Get notified when your stories are liked',
-                  initialValue: true,
-                ),
-                const SizedBox(height: 28),
-                _buildSectionTitle('Email Notifications'),
-              
-                _buildToggleTile(
-                  icon: Icons.person_add_outlined,
-                  title: 'New Followers',
-                  subtitle: 'Get notified when someone follows you',
-                  initialValue: true,
-                ),
-                const SizedBox(height: 28),
-                _buildSectionTitle('Privacy & Behavior'),
-                const SizedBox(height: 12),
-                _buildToggleTile(
-                  icon: Icons.vibration_outlined,
-                  title: 'Vibration',
-                  subtitle: 'Enable tactile feedback for alerts',
-                  initialValue: true,
-                ),
-              ],
+            child: StreamBuilder<DocumentSnapshot>(
+              stream: FirebaseFirestore.instance.collection('users').doc(user?.uid).snapshots(),
+              builder: (context, snapshot) {
+                final data = snapshot.data?.data() as Map<String, dynamic>? ?? {};
+                final prefs = data['notificationPrefs'] as Map<String, dynamic>? ?? {};
+
+                return ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 24, 16, 32),
+                  children: [
+                    _buildSectionTitle('Push Notifications'),
+                    const SizedBox(height: 12),
+                    _buildToggleTile(
+                      icon: Icons.notifications_active_outlined,
+                      title: 'Story Updates',
+                      subtitle: 'Get notified when stories you follow are updated',
+                      keyName: 'storyUpdates',
+                      currentValue: prefs['storyUpdates'] ?? true,
+                    ),
+                    _buildToggleTile(
+                      icon: Icons.chat_bubble_outline,
+                      title: 'Comments & Replies',
+                      subtitle: 'Notify when someone comments on your stories',
+                      keyName: 'comments',
+                      currentValue: prefs['comments'] ?? true,
+                    ),
+                    _buildToggleTile(
+                      icon: Icons.favorite_border,
+                      title: 'Likes & Reactions',
+                      subtitle: 'Get notified when your stories are liked',
+                      keyName: 'likes',
+                      currentValue: prefs['likes'] ?? true,
+                    ),
+                    const SizedBox(height: 28),
+                    _buildSectionTitle('Social'),
+                    _buildToggleTile(
+                      icon: Icons.person_add_outlined,
+                      title: 'New Followers',
+                      subtitle: 'Get notified when someone follows you',
+                      keyName: 'followers',
+                      currentValue: prefs['followers'] ?? true,
+                    ),
+                  ],
+                );
+              }
             ),
           ),
         ],
@@ -143,7 +155,8 @@ class NotificationsSettingsScreen extends StatelessWidget {
     required IconData icon,
     required String title,
     required String subtitle,
-    required bool initialValue,
+    required String keyName,
+    required bool currentValue,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -176,11 +189,16 @@ class NotificationsSettingsScreen extends StatelessWidget {
             ),
           ),
           Switch(
-            value: initialValue,
-            onChanged: (value) {
-              // TODO: Implement toggle functionality
+            value: currentValue,
+            onChanged: (bool value) async {
+              final uid = FirebaseAuth.instance.currentUser?.uid;
+              if (uid == null) return;
+              
+              await FirebaseFirestore.instance.collection('users').doc(uid).set({
+                'notificationPrefs': { keyName: value }
+              }, SetOptions(merge: true));
             },
-            activeColor: Colors.white,
+            activeThumbColor: Colors.white, // Replaced deprecated activeColor
             activeTrackColor: AppTheme.inkMaroon,
             inactiveThumbColor: AppTheme.inkGold,
             inactiveTrackColor: AppTheme.inkGold.withValues(alpha: 0.2),

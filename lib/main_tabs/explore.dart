@@ -162,6 +162,25 @@ class _ExploreScreenState extends State<ExploreScreen>
           'username'    : user.email?.split('@').first ?? '',
           'photoUrl'    : user.photoURL ?? '',
         });
+
+        // Notify the followed person
+        final fromName = user.displayName?.isNotEmpty == true 
+            ? user.displayName! 
+            : (user.email?.split('@').first ?? 'Someone');
+
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(targetUserId)
+            .collection('notifications')
+            .add({
+          'title': 'New Follower',
+          'body': '$fromName started following you',
+          'type': 'follow',
+          'timestamp': FieldValue.serverTimestamp(),
+          'isRead': false,
+          'fromId': user.uid,
+        });
+        debugPrint('[Notification] Follow notification sent to author: $targetUserId');
       }
     } catch (e) {
       // Revert on error
@@ -349,17 +368,23 @@ class _ExploreScreenState extends State<ExploreScreen>
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Container(
-                width      : 44,
-                height     : 44,
-                decoration : BoxDecoration(
-                  color        : Colors.white.withValues(alpha: 0.15),
-                  borderRadius : BorderRadius.circular(AppTheme.radiusSm),
+              GestureDetector(
+                onTap: () => Navigator.of(context).maybePop(),
+                child: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.arrow_back_ios_new_rounded,
+                    color: Colors.white,
+                    size: 18,
+                  ),
                 ),
-                child: const Icon(Icons.search,
-                    color: AppTheme.inkCanvas, size: 24),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -415,7 +440,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                 contentPadding :
                     const EdgeInsets.symmetric(horizontal: 12),
                 hintStyle      : AppTypography.bodyMd.copyWith(
-                    color: AppTheme.inkUmber.withOpacity(0.6)),
+                    color: AppTheme.inkUmber.withValues(alpha: 0.6)),
               ),
               style: AppTypography.bodyMd
                   .copyWith(color: AppTheme.inkEspresso),
@@ -487,14 +512,14 @@ class _ExploreScreenState extends State<ExploreScreen>
         children: [
           Icon(Icons.auto_stories_outlined,
               size : 64,
-              color: AppTheme.inkUmber.withOpacity(0.25)),
+              color: AppTheme.inkUmber.withValues(alpha: 0.25)),
           const SizedBox(height: 16),
           Text(
             _isSearchingStories
                 ? 'Search for your next favorite story'
                 : 'Search for writers to follow',
             style:
-                AppTypography.bodyMd.copyWith(color: AppTheme.inkUmber),
+                AppTypography.bodyMd.copyWith(color: AppTheme.inkUmber.withValues(alpha: 0.6)),
           ),
         ],
       ),
@@ -537,8 +562,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                         .copyWith(color: AppTheme.inkUmber)),
                 const SizedBox(height: 4),
                 Text('Try a different title or genre',
-                    style: AppTypography.bodySm.copyWith(
-                        color: AppTheme.inkUmber.withOpacity(0.6))),
+                    style: AppTypography.bodySm.copyWith(color: AppTheme.inkUmber.withValues(alpha: 0.6))),
               ],
             ),
           );
@@ -859,8 +883,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                         .copyWith(color: AppTheme.inkUmber)),
                 const SizedBox(height: 4),
                 Text('Try a different name or username',
-                    style: AppTypography.bodySm.copyWith(
-                        color: AppTheme.inkUmber.withOpacity(0.6))),
+                    style: AppTypography.bodySm.copyWith(color: AppTheme.inkUmber.withValues(alpha: 0.6))),
               ],
             ),
           );
@@ -936,8 +959,8 @@ class _ExploreScreenState extends State<ExploreScreen>
                     Text(
                       bio,
                       style: AppTypography.bodySm.copyWith(
-                          color: AppTheme.inkUmber.withOpacity(0.7)),
-                      maxLines: 1,
+                          color: AppTheme.inkUmber.withValues(alpha: 0.7)),
+                      maxLines: 1, // This is the target.
                       overflow: TextOverflow.ellipsis,
                     ),
                 ],

@@ -5,6 +5,9 @@ import '../theme/new_app_theme.dart';
 import '../theme/app_typography.dart';
 import 'package:vibewrite_app/main_tabs/post/post.dart';
 import 'package:vibewrite_app/story/read_screen.dart';
+import 'package:vibewrite_app/main_tabs/explore.dart';
+import 'package:vibewrite_app/main_tabs/notifications_screen.dart';
+import 'package:vibewrite_app/main_tabs/settings/notifications_settings.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -22,6 +25,8 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoadingUserData = true;
 
   final Set<String> _savedStoryIds = {};
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
 
   final List<String> _genres = [
     'All', 'Romance', 'Mystery', 'Fantasy', 'Sci-Fi'
@@ -32,6 +37,12 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _loadUserData();
     _loadSavedStoryIds();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadUserData() async {
@@ -377,6 +388,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: CustomScrollView(
             slivers: [
               SliverToBoxAdapter(child: _buildHeader()),
+              SliverToBoxAdapter(child: _buildSearchBar()),
               SliverToBoxAdapter(child: _buildFeaturedSection()),
               SliverToBoxAdapter(child: _buildGenreChips()),
               SliverToBoxAdapter(
@@ -399,50 +411,88 @@ class _HomeScreenState extends State<HomeScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       child: Row(
-       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Image.asset(
             'assets/images/vibe_header.png',
             height: 50,
-            // fit: BoxFit.contain,
           ),
-          // Avatar
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: AppTheme.inkMaroon,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: AppTheme.inkMaroon.withValues(alpha: 0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Center(
-              child: _isLoadingUserData
-                  ? const SizedBox(
-                      width: 30,
-                      height: 30,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor:
-                            AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                  : Text(
-                      _userInitials,
-                      // labelMd — Manrope 12 bold, white on terracotta
-                      style: AppTypography.labelMd.copyWith(
-                        color: Colors.white,
-                        fontSize: 14,
-                      ),
+          Row(
+            children: [              
+              const SizedBox(width: 8),
+              // Avatar
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppTheme.inkMaroon,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.inkMaroon.withValues(alpha: 0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
                     ),
-            ),
+                  ],
+                ),
+                child: Center(
+                  child: _isLoadingUserData
+                      ? const SizedBox(
+                          width: 30,
+                          height: 30,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : Text(
+                          _userInitials,
+                          style: AppTypography.labelMd.copyWith(
+                            color: Colors.white,
+                            fontSize: 14,
+                          ),
+                        ),
+                ),
+              ),
+            ],
           ),
         ],
+      ),
+    );
+  }
+
+  // ── Search Bar ─────────────────────────────────────────────────────────────
+  Widget _buildSearchBar() {
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const ExploreScreen()),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppTheme.inkBgMain,
+          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+          border: Border.all(color: AppTheme.borderColor, width: 1),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.search_outlined,
+              color: AppTheme.inkUmber.withValues(alpha: 0.6),
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'Search stories...',
+              style: AppTypography.bodyMd.copyWith(
+                color: AppTheme.inkUmber.withValues(alpha: 0.5),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -622,7 +672,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ── Recent Stories — live Firestore stream ─────────────────────────────────
+  // ── Recent Stories — live Firestore stream with search ────────────────────
   Widget _buildRecentStoriesStream() {
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: _storiesQuery.snapshots(),
@@ -671,7 +721,16 @@ class _HomeScreenState extends State<HomeScreen> {
           );
         }
 
-        final docs = snapshot.data?.docs ?? [];
+        var docs = snapshot.data?.docs ?? [];
+
+        // Filter by search query
+        if (_searchQuery.isNotEmpty) {
+          docs = docs.where((doc) {
+            final title = (doc.data()['title'] as String? ?? '').toLowerCase();
+            final author = (doc.data()['authorUsername'] as String? ?? '').toLowerCase();
+            return title.contains(_searchQuery) || author.contains(_searchQuery);
+          }).toList();
+        }
 
         if (docs.isEmpty) {
           return Padding(
@@ -684,7 +743,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: AppTheme.inkUmber.withValues(alpha: 0.3)),
                 const SizedBox(height: 12),
                 Text(
-                  'No stories yet.',
+                  _searchQuery.isNotEmpty
+                      ? 'No stories found.'
+                      : 'No stories yet.',
                   // bodyLg — Manrope 16 medium
                   style: AppTypography.bodyLg.copyWith(
                     color: AppTheme.inkUmber.withValues(alpha: 0.6),
@@ -692,35 +753,39 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Be the first to write one!',
+                  _searchQuery.isNotEmpty
+                      ? 'Try a different search'
+                      : 'Be the first to write one!',
                   // bodyMd — Manrope 14
                   style: AppTypography.bodyMd.copyWith(
                     color: AppTheme.inkUmber.withValues(alpha: 0.45),
                   ),
                 ),
-                const SizedBox(height: 16),
-                GestureDetector(
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                        builder: (_) => const PostScreen()),
-                  ),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: AppTheme.inkMaroon,
-                      borderRadius:
-                          BorderRadius.circular(AppTheme.radiusFull),
+                if (_searchQuery.isEmpty) ...[
+                  const SizedBox(height: 16),
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                          builder: (_) => const PostScreen()),
                     ),
-                    child: Text(
-                      'Write a Story',
-                      // labelMd — Manrope 12 bold, white
-                      style: AppTypography.labelMd.copyWith(
-                        color: Colors.white,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: AppTheme.inkMaroon,
+                        borderRadius:
+                            BorderRadius.circular(AppTheme.radiusFull),
+                      ),
+                      child: Text(
+                        'Write a Story',
+                        // labelMd — Manrope 12 bold, white
+                        style: AppTypography.labelMd.copyWith(
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ),
-                ),
+                ],
               ],
             ),
           );
@@ -1055,6 +1120,25 @@ class _FollowButtonState extends State<_FollowButton> {
           'username':    md['username']    ?? '',
           'photoUrl':    md['photoUrl']    ?? '',
         });
+
+        // Notify the followed person
+        final fromName = md['displayName']?.isNotEmpty == true 
+            ? md['displayName']! 
+            : (user.email?.split('@').first ?? 'Someone');
+
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(widget.authorId)
+            .collection('notifications')
+            .add({
+          'title': 'New Follower',
+          'body': '$fromName started following you',
+          'type': 'follow',
+          'timestamp': FieldValue.serverTimestamp(),
+          'isRead': false,
+          'fromId': user.uid,
+        });
+        debugPrint('[Notification] Follow notification sent to author: ${widget.authorId}');
       }
     } catch (e) {
       setState(() => _isFollowing = wasFollowing);

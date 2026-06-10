@@ -8,11 +8,13 @@ import '../theme/app_typography.dart';
 class CommentsSection extends StatefulWidget {
   final String storyId;
   final String authorId;
+  final String storyTitle;
 
   const CommentsSection({
     super.key,
     required this.storyId,
     required this.authorId,
+    required this.storyTitle,
   });
 
   @override
@@ -81,17 +83,37 @@ class _CommentsSectionState extends State<CommentsSection> {
     setState(() => _submittingComment = true);
     try {
       final name = await _getDisplayName();
-      await _commentsRef.add({
+      final commentDoc = await _commentsRef.add({
         'text'      : text,
         'userId'    : _currentUid,
         'userName'  : name,
         'isAuthor'  : _isAuthor,
-        // FIX 2: Store a client-side timestamp alongside serverTimestamp
-        // so ordering never fails on null createdAt
         'createdAt' : FieldValue.serverTimestamp(),
         'createdAtMs': DateTime.now().millisecondsSinceEpoch,
         'replyCount': 0,
       });
+
+      // Notify the Story Author (Reader -> Author)
+      // Ensure authorId is not empty and is not the person who just commented
+      if (widget.authorId.isNotEmpty && widget.authorId != _currentUid) {
+        debugPrint('[CommentsSection] Notifying author: ${widget.authorId}');
+        
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(widget.authorId)
+            .collection('notifications')
+            .add({
+          'title': 'New Comment',
+          'body': '$name commented on "${widget.storyTitle}": "$text"',
+          'type': 'comment',
+          'timestamp': FieldValue.serverTimestamp(),
+          'isRead': false,
+          'fromId': _currentUid,
+          'storyId': widget.storyId,
+        });
+        debugPrint('[Notification] Comment notification sent to author: ${widget.authorId}');
+      }
+
       _commentController.clear();
       _commentFocus.unfocus();
     } catch (e) {
@@ -115,25 +137,50 @@ class _CommentsSectionState extends State<CommentsSection> {
     setState(() => _submittingReply = true);
     try {
       final name = await _getDisplayName();
-      final batch = FirebaseFirestore.instance.batch();
+      
+      // Get parent comment details for notification
+      final parentCommentDoc = await _commentsRef.doc(commentId).get();
+      final parentData = parentCommentDoc.data() as Map<String, dynamic>?;
 
-      final replyRef =
-          _commentsRef.doc(commentId).collection('replies').doc();
-      batch.set(replyRef, {
-        'text'        : text,
-        'userId'      : _currentUid,
-        'userName'    : name,
-        'isAuthor'    : _isAuthor,
-        'createdAt'   : FieldValue.serverTimestamp(),
-        // FIX 2: client-side fallback timestamp
-        'createdAtMs' : DateTime.now().millisecondsSinceEpoch,
+      // Run comment creation in a batch
+      await FirebaseFirestore.instance.runTransaction((transaction) async {
+        final replyRef = _commentsRef.doc(commentId).collection('replies').doc();
+        
+        transaction.set(replyRef, {
+          'text'        : text,
+          'userId'      : _currentUid,
+          'userName'    : name,
+          'isAuthor'    : _isAuthor,
+          'createdAt'   : FieldValue.serverTimestamp(),
+          'createdAtMs' : DateTime.now().millisecondsSinceEpoch,
+        });
+
+        transaction.update(_commentsRef.doc(commentId), {
+          'replyCount': FieldValue.increment(1),
+        });
       });
 
-      batch.update(_commentsRef.doc(commentId), {
-        'replyCount': FieldValue.increment(1),
-      });
+      // Notify the Comment Owner (Author -> Reader OR Reader -> Reader)
+      final parentUserId = parentData?['userId'] as String?;
+      if (parentUserId != null && parentUserId != _currentUid) {
+        debugPrint('[CommentsSection] Notifying comment owner: $parentUserId');
+        
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(parentUserId)
+            .collection('notifications')
+            .add({
+          'title': 'New Reply',
+          'body': '$name replied to your comment: "$text"',
+          'type': 'comment',
+          'timestamp': FieldValue.serverTimestamp(),
+          'isRead': false,
+          'fromId': _currentUid,
+          'storyId': widget.storyId,
+        });
+        debugPrint('[Notification] Reply notification sent to comment owner: $parentUserId');
+      }
 
-      await batch.commit();
       _replyController.clear();
       _replyFocus.unfocus();
       setState(() {
@@ -217,9 +264,8 @@ class _CommentsSectionState extends State<CommentsSection> {
                 minLines   : 1,
                 maxLines   : 3,
                 decoration : InputDecoration(
-                  hintText       : 'Write a comment…',
-                  hintStyle      : AppTypography.bodyMd.copyWith(
-                      color: AppTheme.inkUmber.withOpacity(0.5)),
+                  hintText       : 'Write a comment…', hintStyle: AppTypography.bodyMd.copyWith(
+                      color: AppTheme.inkUmber.withValues(alpha: 0.5)),
                   border         : InputBorder.none,
                   isDense        : true,
                   contentPadding : const EdgeInsets.symmetric(
@@ -304,7 +350,7 @@ class _CommentsSectionState extends State<CommentsSection> {
                 SelectableText(
                   '${snapshot.error}',
                   style: AppTypography.caption
-                      .copyWith(color: AppTheme.inkUmber.withOpacity(0.6)),
+                      .copyWith(color: AppTheme.inkUmber.withValues(alpha: 0.6)),
                 ),
               ],
             ),
@@ -430,8 +476,7 @@ class _CommentsSectionState extends State<CommentsSection> {
                           if (time.isNotEmpty)
                             Text(time,
                                 style: AppTypography.caption.copyWith(
-                                    color: AppTheme.inkUmber
-                                        .withOpacity(0.6))),
+                                    color: AppTheme.inkUmber.withValues(alpha: 0.6))),
                         ],
                       ),
                     ),
@@ -440,7 +485,7 @@ class _CommentsSectionState extends State<CommentsSection> {
                         onTap: () => _deleteComment(commentId, userId),
                         child: Icon(Icons.close,
                             size : 16,
-                            color: AppTheme.inkUmber.withOpacity(0.4)),
+                            color: AppTheme.inkUmber.withValues(alpha: 0.4)),
                       ),
                   ],
                 ),
@@ -554,10 +599,8 @@ class _CommentsSectionState extends State<CommentsSection> {
                         focusNode  : _replyFocus,
                         minLines   : 1,
                         maxLines   : 3,
-                        decoration : InputDecoration(
-                          hintText : 'Replying to @$_replyingToUsername…',
-                          hintStyle: AppTypography.bodyMd.copyWith(
-                              color: AppTheme.inkUmber.withOpacity(0.5)),
+                        decoration : InputDecoration(hintText : 'Replying to @$_replyingToUsername…', hintStyle: AppTypography.bodyMd.copyWith(
+                              color: AppTheme.inkUmber.withValues(alpha: 0.5)),
                           border         : InputBorder.none,
                           isDense        : true,
                           contentPadding : const EdgeInsets.symmetric(
@@ -606,7 +649,7 @@ class _CommentsSectionState extends State<CommentsSection> {
             child: SelectableText(
               'Could not load replies: ${snapshot.error}',
               style: AppTypography.caption
-                  .copyWith(color: AppTheme.inkUmber.withOpacity(0.6)),
+                  .copyWith(color: AppTheme.inkUmber.withValues(alpha: 0.6)),
             ),
           );
         }
@@ -700,8 +743,7 @@ class _CommentsSectionState extends State<CommentsSection> {
                         if (time.isNotEmpty)
                           Text(time,
                               style: AppTypography.caption.copyWith(
-                                  color: AppTheme.inkUmber
-                                      .withOpacity(0.5))),
+                                  color: AppTheme.inkUmber.withValues(alpha: 0.4))),
                         if (canDelete) ...[
                           const SizedBox(width: 6),
                           GestureDetector(
@@ -709,8 +751,7 @@ class _CommentsSectionState extends State<CommentsSection> {
                                 _deleteReply(commentId, replyId, userId),
                             child: Icon(Icons.close,
                                 size : 13,
-                                color: AppTheme.inkUmber
-                                    .withOpacity(0.4)),
+                                color: AppTheme.inkUmber.withValues(alpha: 0.4)),
                           ),
                         ],
                       ],

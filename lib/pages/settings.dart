@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../theme/new_app_theme.dart';
 import '../../theme/app_typography.dart';
 import '../main_tabs/settings/account_settings.dart';
-import '../main_tabs/settings/support_settings.dart';
 import '../main_tabs/settings/logout_handler.dart';
 import '../main_tabs/settings/notifications_settings.dart';
 import '../main_tabs/settings/appearance_settings.dart';

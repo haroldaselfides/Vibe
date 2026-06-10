@@ -6,6 +6,8 @@ import 'package:vibewrite_app/main_tabs/post/post.dart';
 import 'package:vibewrite_app/main_tabs/profile.dart';
 import 'package:vibewrite_app/main_tabs/library.dart';
 import 'package:vibewrite_app/main_tabs/home.dart';
+import 'package:vibewrite_app/main_tabs/notifications_screen.dart';
+
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
@@ -29,7 +31,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
 
   final List<Map<String, dynamic>> _navItems = [
     {'icon': Icons.home_outlined,    'activeIcon': Icons.home_rounded,      'label': 'Home'},
-    {'icon': Icons.search_outlined, 'activeIcon': Icons.search_rounded,   'label': 'Search'},
+    {'icon': Icons.notifications_outlined, 'activeIcon': Icons.notifications_rounded,   'label': 'Search'},
     {'icon': Icons.edit_outlined,    'activeIcon': Icons.edit_rounded,      'label': 'Write'},
     {'icon': Icons.bookmark_border, 'activeIcon': Icons.bookmark_rounded,  'label': 'Library'},
     {'icon': Icons.person_outline,  'activeIcon': Icons.person_rounded,    'label': 'Profile'},
@@ -61,7 +63,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
     // Initialize screens
     _screens = [
       const HomeScreen(),
-      const ExploreScreen(),
+      const NotificationsScreen(),
       PostScreen(
         onEditorModeChanged: (isEditor) {
           setState(() => _hideBottomBar = isEditor);

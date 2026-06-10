@@ -7,6 +7,7 @@ import '../../theme/app_typography.dart';
 import 'editor_chapters_sidebar.dart';
 import 'package:vibewrite_app/main_tabs/post/editors_content_widgets.dart';
 import 'post_screen_utils.dart';
+import 'package:vibewrite_app/services/notification_service.dart';
 import 'dart:convert';
 import 'package:flutter_quill/flutter_quill.dart';
 
@@ -294,6 +295,7 @@ class _PostScreenState extends State<PostScreen> {
       return;
     }
 
+    final bool wasAlreadyPublished = _isPublished;
     final targetPublishState = publishStatus ?? _isPublished;
     setState(() {
       _isSaving = true;
@@ -347,25 +349,27 @@ class _PostScreenState extends State<PostScreen> {
             .update({...data, 'body': body});
       }
 
+      bool isBrandNewChapter = true;
+      int? savedChapterNum;
       if (_storyType == 'Novel' && _savedStoryId != null) {
-        int chapterNum;
         if (_contentType == 'Prologue') {
-          chapterNum = 0;
+          savedChapterNum = 0;
         } else if (_contentType == 'Epilogue') {
-          chapterNum = 999;
+          savedChapterNum = 999;
         } else {
-          chapterNum = int.tryParse(_chapterController.text) ?? 1;
+          savedChapterNum = int.tryParse(_chapterController.text) ?? 1;
         }
 
         final chapterRef = storiesRef
             .doc(_savedStoryId)
             .collection('chapters')
-            .doc('chapter_$chapterNum');
+            .doc('chapter_$savedChapterNum');
 
         final existing = await chapterRef.get();
+        isBrandNewChapter = !existing.exists;
 
         await chapterRef.set({
-          'chapterNumber': chapterNum,
+          'chapterNumber': savedChapterNum,
           'title': _currentChapterTitle,
           'body': body,
           'wordCount': _wordCount,
@@ -377,6 +381,30 @@ class _PostScreenState extends State<PostScreen> {
         }, SetOptions(merge: true));
 
         _currentChapterPublished = targetPublishState;
+      }
+
+      // ── Trigger Notifications ──
+      if (targetPublishState) {
+        if (!wasAlreadyPublished) {
+          // Story just went public for the first time
+          NotificationService.notifyFollowersOfNewStory(
+            authorId: currentUser.uid,
+            authorName: _authorName,
+            storyId: _savedStoryId!,
+            storyTitle: title,
+          );
+        } else {
+          // Story was already public, notify library holders of the update/new chapter
+          NotificationService.notifyLibraryHolders(
+            storyId: _savedStoryId!,
+            authorId: currentUser.uid,
+            authorName: _authorName,
+            storyTitle: title,
+            storyType: _storyType,
+            isNewChapter: isBrandNewChapter,
+            chapterNumber: savedChapterNum,
+          );
+        }
       }
 
       if (mounted) {

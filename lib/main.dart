@@ -12,8 +12,11 @@ import 'package:vibewrite_app/services/firebase_options.dart';
 import 'theme/new_app_theme.dart';
 import 'theme/app_typography.dart';
 import 'widgets/navigation.dart';
+// import 'services/push_notification_service.dart';
+
 
 void main() async {
+
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
